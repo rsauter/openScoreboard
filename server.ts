@@ -248,6 +248,11 @@ function unblockWaiting(expiredId: number): void {
 
 // #region ─── REST API ─────────────────────────────────────────────────────────
 
+/** GET /api/health — simple reachability check (no DB in this open-source build). */
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
 /** GET /api/sport-templates — returns all YAML-loaded templates */
 app.get('/api/sport-templates', (_req, res) => {
   res.json(loadedTemplates);

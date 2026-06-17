@@ -6,6 +6,9 @@
 # Paths are flattened using underscores instead of slashes, e.g.
 # src/client/pages/GameStart.vue → src_client_pages_GameStart.vue
 #
+# Plain bash, no globstar/** — works with the bash 3.2 that ships
+# with macOS as well as any modern bash on Linux/Windows (Git Bash, WSL).
+#
 # Usage:
 #   chmod +x collect-for-claude.sh
 #   ./collect-for-claude.sh
@@ -18,63 +21,72 @@ OUT_DIR="./claude_upload"
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
-# Files/patterns to collect.
-# Adjust if the project structure changes.
-INCLUDE_PATTERNS=(
-  "package.json"
-  "tsconfig.json"
-  "tsconfig.server.json"
-  "vite.config.ts"
-  "server.ts"
-  "README.md"
-  "ARCHITECTURE.md"
-  ".gitignore"
-  "src/**/*.ts"
-  "src/**/*.vue"
-  "src/**/*.html"
-  "src/**/*.css"
-  "src/**/*.json"
-  "sports-templates/*.yaml"
-  "sports-templates/*.yml"
-)
-
-# Directories that are NEVER collected (even if they happen to match a pattern)
-EXCLUDE_DIRS=(
-  "node_modules"
-  "dist"
-  "public"
-  ".git"
-  "claude_upload"
-)
-
-is_excluded() {
-  local path="$1"
-  for dir in "${EXCLUDE_DIRS[@]}"; do
-    if [[ "$path" == *"/$dir/"* ]] || [[ "$path" == "$dir/"* ]]; then
-      return 0
-    fi
-  done
-  return 1
+collect() {
+  local src="$1"
+  if [[ ! -f "$src" ]]; then
+    echo "  ! skip (not found): $src"
+    return
+  fi
+  local rel="${src#./}"
+  local flat="${rel//\//_}"
+  cp "$src" "$OUT_DIR/$flat"
+  echo "  + $src → $flat"
 }
 
-count=0
-for pattern in "${INCLUDE_PATTERNS[@]}"; do
-  # enable globstar for ** patterns
-  shopt -s globstar nullglob
-  for file in $pattern; do
-    [[ -f "$file" ]] || continue
-    is_excluded "$file" && continue
+# ── Root files ──────────────────────────────────────────────────────────────
+collect "./server.ts"
+collect "./package.json"
+collect "./tsconfig.json"
+collect "./tsconfig.server.json"
+collect "./vite.config.ts"
+collect "./README.md"
+collect "./ARCHITECTURE.md"
+collect "./.gitignore"
 
-    # flatten path: / → _
-    flat_name=$(echo "$file" | sed 's/\//_/g')
-    cp "$file" "$OUT_DIR/$flat_name"
-    echo "  + $file → $flat_name"
-    count=$((count + 1))
-  done
-  shopt -u globstar nullglob
-done
+# ── src/client ──────────────────────────────────────────────────────────────
+collect "./src/client/index.ts"
+collect "./src/client/index.html"
+collect "./src/client/shared.ts"
+collect "./src/client/style.css"
+collect "./src/client/display.html"
+collect "./src/client/display.ts"
+collect "./src/client/App.vue"
+
+# ── src/client/components ──────────────────────────────────────────────────
+collect "./src/client/components/TopNav.vue"
+
+# ── src/client/router ──────────────────────────────────────────────────────
+collect "./src/client/router/index.ts"
+
+# ── src/client/i18n (locales) ──────────────────────────────────────────────
+collect "./src/client/i18n/index.ts"
+collect "./src/client/i18n/en.json"
+collect "./src/client/i18n/de.json"
+collect "./src/client/i18n/fr.json"
+collect "./src/client/i18n/it.json"
+
+# ── src/client/pages ────────────────────────────────────────────────────────
+collect "./src/client/pages/GameStart.vue"
+collect "./src/client/pages/Operator.vue"
+collect "./src/client/pages/Display.vue"
+collect "./src/client/pages/Settings.vue"
+
+# ── src/shared ──────────────────────────────────────────────────────────────
+collect "./src/shared/types.ts"
+
+# ── sports-templates ────────────────────────────────────────────────────────
+collect "./sports-templates/floorball-gf-single-nl-finals.yaml"
+collect "./sports-templates/floorball-gf-single-tournament.yaml"
+collect "./sports-templates/floorball-gf-single.yaml"
+collect "./sports-templates/floorball-gf-tournament-finals.yaml"
+collect "./sports-templates/floorball-gf-tournament.yaml"
+collect "./sports-templates/floorball-kf-ejuniors.yaml"
+collect "./sports-templates/floorball-kf-single.yaml"
+collect "./sports-templates/floorball-kf-tournament-finals.yaml"
+collect "./sports-templates/floorball-kf-tournament.yaml"
+collect "./sports-templates/handball.yaml"
+collect "./sports-templates/icehockey-nl-playoff.yaml"
 
 echo ""
-echo "✅ $count file(s) collected in $OUT_DIR/"
-echo ""
-echo "Next step: upload the contents of $OUT_DIR to the Claude project."
+echo "✅ Files gesammelt in $OUT_DIR/"
+ls "$OUT_DIR/"

@@ -1,5 +1,6 @@
 {
-  "nav.title": "sluiten SCOREBOARD",
+  "nav.title": "open SCOREBOARD",
+  "nav.subTitle": "by sluiten-scoreboard.com, Schweiz",
   "nav.dashboard": "Dashboard",
   "nav.manager": "Manager",
   "nav.gamestart": "Kickstart",
@@ -17,7 +18,9 @@
   "common.min": "Min",
   "common.connecting": "Verbinde...",
   "common.connected": "🟢 Verbunden",
-  "common.disconnected": "🔴 Getrennt – Seite neu laden",
+  "common.disconnected": "🔴 Getrennt",
+  "common.serverOnline": "🟢 Server erreichbar",
+  "common.serverOffline": "🔴 Server nicht erreichbar",
   "common.name": "Name",
   "common.abbreviation": "Kürzel",
   "common.organization": "Organisation",

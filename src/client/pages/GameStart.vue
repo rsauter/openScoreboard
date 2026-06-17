@@ -117,7 +117,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { updateStatusBar } from '../shared';
 import type { SportsTemplate } from '../../shared/types';
 
 const { t } = useI18n();
@@ -186,6 +185,5 @@ function startGame() {
 
 onMounted(async () => {
   await loadTemplates();
-  await updateStatusBar();
 });
 </script>

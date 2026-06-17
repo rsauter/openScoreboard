@@ -5,9 +5,7 @@
   </main>
 
   <!-- ─── Global Status Bar ──────────────────────────────────────────────── -->
-  <div class="fixed bottom-0 left-0 right-0 z-50 bg-base-200 border-t border-base-300 py-1 px-4 text-xs text-center text-base-content/60">
-    {{ statusText }}
-  </div>
+  <StatusBar />
 
   <!-- ─── Global Toast Container ─────────────────────────────────────────── -->
   <Teleport to="body">
@@ -47,9 +45,10 @@
 
 <script setup lang="ts">
 import TopNav from './components/TopNav.vue';
+import StatusBar from './components/StatusBar.vue';
 import { onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { toasts, removeToast, confirmState, resolveConfirm, statusText } from './shared';
+import { toasts, removeToast, confirmState, resolveConfirm } from './shared';
 
 const { t } = useI18n();
 
