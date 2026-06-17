@@ -124,16 +124,39 @@ function t(key: string, params?: Record<string, unknown>): string {
 const wsConnected = ref(false);
 const state       = ref<GameState | null>(null);
 let ws: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
+let unmounted = false;
+
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS  = 10000;
 
 function wsUrl(): string {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${proto}//${location.host}/socket`;
 }
 
+function scheduleReconnect(): void {
+  if (unmounted || reconnectTimer) return;
+  const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempt, RECONNECT_MAX_DELAY_MS);
+  reconnectAttempt++;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectWebSocket();
+  }, delay);
+}
+
 function connectWebSocket(): void {
   ws = new WebSocket(wsUrl());
-  ws.addEventListener('open',    () => { wsConnected.value = true; });
-  ws.addEventListener('close',   () => { wsConnected.value = false; });
+  ws.addEventListener('open', () => {
+    wsConnected.value = true;
+    reconnectAttempt = 0;
+  });
+  ws.addEventListener('close', () => {
+    wsConnected.value = false;
+    scheduleReconnect();
+  });
+  ws.addEventListener('error', () => { ws?.close(); });
   ws.addEventListener('message', (event) => {
     const message = JSON.parse(event.data) as { type: string; state?: GameState };
     if (message.type === 'STATE' && message.state) {
@@ -143,7 +166,11 @@ function connectWebSocket(): void {
 }
 
 onMounted(() => { connectWebSocket(); });
-onUnmounted(() => { ws?.close(); });
+onUnmounted(() => {
+  unmounted = true;
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  ws?.close();
+});
 
 // ─── Computed ──────────────────────────────────────────────────────────────────
 

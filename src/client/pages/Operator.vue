@@ -254,11 +254,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { fmt, phaseLabel, updateStatusBar } from '../shared';
+import { fmt, phaseLabel } from '../shared';
 import type { GameState, ClientCommand, Penalty } from '../../shared/types';
 
 const { t } = useI18n();
-const wsStatus          = ref('');
 const gameState         = ref<GameState | null>(null);
 const clockDisplayValue = ref('');
 const clockInputEl      = ref<HTMLInputElement | null>(null);
@@ -449,16 +448,32 @@ function confirmReset() {
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
+let unmounted = false;
+
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS  = 10000;
+
+function scheduleReconnect() {
+  if (unmounted || reconnectTimer) return;
+  const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempt, RECONNECT_MAX_DELAY_MS);
+  reconnectAttempt++;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectWebSocket();
+  }, delay);
+}
+
 function connectWebSocket() {
   ws = new WebSocket(wsUrl());
   ws.addEventListener('open', () => {
-    wsStatus.value = t('common.connected');
-    updateStatusBar(wsStatus.value);
+    reconnectAttempt = 0;
   });
   ws.addEventListener('close', () => {
-    wsStatus.value = t('common.disconnected');
-    updateStatusBar(wsStatus.value);
+    scheduleReconnect();
   });
+  ws.addEventListener('error', () => { ws?.close(); });
   ws.addEventListener('message', event => {
     const message = JSON.parse(event.data) as { type: string; state?: GameState; reason?: string };
     if (message.type === 'STATE' && message.state) {
@@ -504,8 +519,11 @@ function playBuzzer(reason: 'period' | 'timeout' | 'penalty') {
 }
 
 onMounted(() => {
-  wsStatus.value = t('common.connecting');
   connectWebSocket();
 });
-onUnmounted(() => { ws?.close(); });
+onUnmounted(() => {
+  unmounted = true;
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  ws?.close();
+});
 </script>

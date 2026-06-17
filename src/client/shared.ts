@@ -33,27 +33,25 @@ export function phaseLabel(
   }
 }
 
-export async function checkHealth(): Promise<boolean> {
+// ─── Server Reachability ───────────────────────────────────────────────────────
+// Polled centrally by StatusBar.vue — no page needs to trigger this itself.
+
+export async function checkServerHealth(): Promise<boolean> {
   try {
     const res = await fetch('/api/health');
-    const data = await res.json();
-    return data.db === 'ok';
+    return res.ok;
   } catch {
     return false;
   }
 }
 
 // ─── Global Status Bar ────────────────────────────────────────────────────────
-// Reactive ref — rendered by App.vue as a sticky footer bar.
-// All pages call updateStatusBar() as before; App.vue displays statusText.
+// Rendered once by StatusBar.vue (mounted in App.vue), visible on every page.
+// The WebSocket and the HTTP server live in the same backend process — they
+// live and die together — so a single shared status is enough; no need to
+// track WS connectivity and server health separately.
 
 export const statusText = ref('');
-
-export async function updateStatusBar(wsStatus: string | null = null): Promise<void> {
-  const dbOk = await checkHealth();
-  const dbPart = dbOk ? '🟢 DB online' : '🔴 DB offline';
-  statusText.value = wsStatus !== null ? `${wsStatus} | ${dbPart}` : dbPart;
-}
 
 // #region  ─── Toast System ─────────────────────────────────────────────────────────────
 

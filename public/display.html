@@ -271,13 +271,17 @@
   }
 
   /* ── Ended-Banner ── */
-  .ended-banner {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 6vw; font-weight: 900; color: #fdcb6e;
-    text-shadow: 0 0 40px rgba(253,203,110,0.8);
-    animation: pulse 1.2s infinite;
-    pointer-events: none;
-  }
+.ended-banner {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  background: rgba(0,0,0,0.72);
+  font-size: 6vw; font-weight: 900; color: #fdcb6e;
+  text-shadow: 0 0 40px rgba(253,203,110,0.8);
+  animation: pulse 1.2s infinite;
+  pointer-events: none;
+  z-index: 10;
+}
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
   /* ── Connection-Dot ── */
