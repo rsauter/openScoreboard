@@ -4,7 +4,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import path from 'path';
 import fs from 'fs';
 import { parse as parseYaml } from 'yaml';
-import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate } from './src/shared/types';
+import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo } from './src/shared/types';
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
 
@@ -115,7 +115,8 @@ function loadYamlTemplates(): void {
 
 // #region ─── Game State ───────────────────────────────────────────────────────
 
-const STATE_FILE = path.join(PROJECT_ROOT, 'state.json');
+const STATE_FILE   = path.join(PROJECT_ROOT, 'state.json');
+const ARCHIVE_DIR  = path.join(PROJECT_ROOT, 'state-archive');
 
 function createInitialState(): GameState {
   return {
@@ -162,8 +163,39 @@ function loadStateFromFile(): void {
   }
 }
 
-/** Clears the state.json file when a game ends. */
-function clearStateFile(): void {
+/** Builds a filesystem-safe slug from a team name (for archive filenames). */
+function slugifyTeamName(name: string): string {
+  return (name || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜ]+/g, '-').replace(/^-+|-+$/g, '') || 'X';
+}
+
+/**
+ * Archives state.json when a game ends, instead of deleting it.
+ * Renamed to state_<timestamp>_<home>-vs-<away>.json inside state-archive/,
+ * so finished matches can be reviewed or cleaned up later via Settings.
+ */
+function archiveStateFile(): void {
+  try {
+    if (!fs.existsSync(ARCHIVE_DIR)) fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+
+    const ts = new Date().toISOString().replace(/:/g, '-').replace(/\..+$/, '');
+    const home = slugifyTeamName(state.homeTeam);
+    const away = slugifyTeamName(state.awayTeam);
+    const archivedName = `state_${ts}_${home}-vs-${away}.json`;
+
+    // Write the final state directly into the archive (covers the case where
+    // state.json hasn't been written yet, e.g. a very short game).
+    fs.writeFileSync(
+      path.join(ARCHIVE_DIR, archivedName),
+      JSON.stringify({ ...state, running: false, lastTick: null }),
+    );
+    if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
+  } catch (e: any) {
+    console.error('[ERROR] State archive failed:', e.message);
+  }
+}
+
+/** Removes state.json without archiving (used on RESET before a game has produced a result). */
+function discardStateFile(): void {
   try { if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE); } catch { }
 }
 
@@ -226,6 +258,64 @@ app.get('/api/state', (_req, res) => {
   res.json(state);
 });
 
+/** GET /api/states — lists archived (finished) game states for the Settings page. */
+app.get('/api/states', (_req, res) => {
+  try {
+    if (!fs.existsSync(ARCHIVE_DIR)) return res.json([]);
+
+    const files = fs.readdirSync(ARCHIVE_DIR).filter(f => f.endsWith('.json'));
+    const infos: ArchivedStateInfo[] = [];
+
+    for (const filename of files) {
+      try {
+        const raw  = fs.readFileSync(path.join(ARCHIVE_DIR, filename), 'utf-8');
+        const data = JSON.parse(raw) as GameState;
+        const stat = fs.statSync(path.join(ARCHIVE_DIR, filename));
+        infos.push({
+          filename,
+          archivedAt:   stat.mtime.toISOString(),
+          homeTeam:     data.homeTeam,
+          awayTeam:     data.awayTeam,
+          homeScore:    data.homeScore,
+          awayScore:    data.awayScore,
+          homeShootout: data.homeShootout,
+          awayShootout: data.awayShootout,
+          phase:        data.phase,
+        });
+      } catch (e: any) {
+        console.error(`[ERROR] Failed to read archived state ${filename}: ${e.message}`);
+      }
+    }
+
+    // Newest first
+    infos.sort((a, b) => b.archivedAt.localeCompare(a.archivedAt));
+    res.json(infos);
+  } catch (e: any) {
+    console.error('[ERROR] Failed to list archived states:', e.message);
+    res.status(500).json({ error: 'Failed to list archived states' });
+  }
+});
+
+/** DELETE /api/states/:filename — removes a single archived game state file. */
+app.delete('/api/states/:filename', (req, res) => {
+  const { filename } = req.params;
+
+  // Guard against path traversal — only allow our own naming pattern.
+  if (!/^state_[\w.\-]+\.json$/.test(filename)) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
+
+  const filePath = path.join(ARCHIVE_DIR, filename);
+  try {
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
+    fs.unlinkSync(filePath);
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error(`[ERROR] Failed to delete archived state ${filename}:`, e.message);
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
 /** SPA catch-all */
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.endsWith('.html')) return next();
@@ -255,7 +345,7 @@ function advancePhase(): void {
         state.timeRemaining = state.soBreakDuration;
       } else {
         state.phase = 'ended';
-        clearStateFile();
+        archiveStateFile();
       }
       break;
     case 'break':
@@ -277,7 +367,7 @@ function advancePhase(): void {
         state.timeRemaining = state.soBreakDuration;
       } else {
         state.phase = 'ended';
-        clearStateFile();
+        archiveStateFile();
       }
       break;
     case 'so_break':
@@ -285,7 +375,7 @@ function advancePhase(): void {
       break;
     case 'shootout':
       state.phase = 'ended';
-      clearStateFile();
+      archiveStateFile();
       break;
   }
 }
@@ -434,7 +524,9 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
       break;
 
     case 'RESET':
-      clearStateFile();
+      // Preserve the result if a game was actually in progress; otherwise just discard.
+      if (state.phase !== 'pregame') archiveStateFile();
+      else discardStateFile();
       state = createInitialState();
       break;
 

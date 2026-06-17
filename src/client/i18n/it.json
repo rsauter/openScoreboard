@@ -262,5 +262,15 @@
   "nav.settings": "Impostazioni",
   "settings.language": "Lingua",
   "settings.theme": "Tema",
-  "settings.about": "Informazioni"
+  "settings.about": "Informazioni",
+  "settings.archive.title": "Partite terminate",
+  "settings.archive.loading": "Caricamento partite salvate...",
+  "settings.archive.empty": "Nessuna partita terminata salvata.",
+  "settings.archive.score": "{home} {homeScore} : {awayScore} {away}",
+  "settings.archive.many": "Ci sono {count} partite salvate. Puoi eliminare quelle non più necessarie con la X.",
+  "settings.archive.deleteTitle": "Elimina partita",
+  "settings.archive.deleteMessage": "Eliminare davvero la partita salvata \"{home} vs {away}\"?",
+  "settings.archive.deleted": "Partita salvata eliminata.",
+  "settings.archive.deleteFailed": "Eliminazione non riuscita.",
+  "settings.archive.loadError": "Errore durante il caricamento delle partite salvate."
 }

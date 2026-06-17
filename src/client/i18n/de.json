@@ -262,5 +262,15 @@
   "nav.settings": "Einstellungen",
   "settings.language": "Sprache",
   "settings.theme": "Theme",
-  "settings.about": "Informationen"
+  "settings.about": "Informationen",
+  "settings.archive.title": "Beendete Spiele",
+  "settings.archive.loading": "Lade gespeicherte Spiele...",
+  "settings.archive.empty": "Keine beendeten Spiele gespeichert.",
+  "settings.archive.score": "{home} {homeScore} : {awayScore} {away}",
+  "settings.archive.many": "Es sind {count} gespeicherte Spiele vorhanden. Du kannst nicht mehr benötigte über das X löschen.",
+  "settings.archive.deleteTitle": "Spiel löschen",
+  "settings.archive.deleteMessage": "Gespeichertes Spiel \"{home} vs {away}\" wirklich löschen?",
+  "settings.archive.deleted": "Gespeichertes Spiel gelöscht.",
+  "settings.archive.deleteFailed": "Löschen fehlgeschlagen.",
+  "settings.archive.loadError": "Fehler beim Laden der gespeicherten Spiele."
 }

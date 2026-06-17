@@ -262,5 +262,15 @@
   "nav.settings": "Paramètres",
   "settings.language": "Langue",
   "settings.theme": "Thème",
-  "settings.about": "Informations"
+  "settings.about": "Informations",
+  "settings.archive.title": "Matchs terminés",
+  "settings.archive.loading": "Chargement des matchs enregistrés...",
+  "settings.archive.empty": "Aucun match terminé enregistré.",
+  "settings.archive.score": "{home} {homeScore} : {awayScore} {away}",
+  "settings.archive.many": "Il y a {count} matchs enregistrés. Vous pouvez supprimer ceux dont vous n'avez plus besoin avec le X.",
+  "settings.archive.deleteTitle": "Supprimer le match",
+  "settings.archive.deleteMessage": "Vraiment supprimer le match enregistré \"{home} vs {away}\" ?",
+  "settings.archive.deleted": "Match enregistré supprimé.",
+  "settings.archive.deleteFailed": "Suppression échouée.",
+  "settings.archive.loadError": "Erreur lors du chargement des matchs enregistrés."
 }
