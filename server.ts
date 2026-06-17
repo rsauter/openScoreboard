@@ -8,15 +8,27 @@ import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, C
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
 
-// In dev (tsx, run from project root) __dirname IS the project root.
-// In prod (compiled to dist/server.js) __dirname is dist/, so go one level up.
+// PROJECT_ROOT wird weiterhin für Daten-Dateien (state.json, templates) genutzt.
+// Im Prod-Modus (dist) gehen wir einen Schritt hoch ins Root.
 const PROJECT_ROOT = __dirname.endsWith(path.sep + 'dist') ? path.join(__dirname, '..') : __dirname;
 
-const app    = express();
+const app = express();
 const server = http.createServer(app);
-const wss    = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server });
 
-app.use(express.static(path.join(PROJECT_ROOT, 'public')));
+// --- FIX FÜR STATISCHE DATEIEN ---
+// Der Build legt Dateien in 'dist/public' ab.
+// Wenn __dirname = /app/dist (Prod), dann ist der Pfad: /app/dist/public
+// Wenn __dirname = /app/src (Dev), dann ist der Pfad: /app/dist/public (für lokalen Build-Test)
+const isProd = __dirname.endsWith(path.sep + 'dist');
+const staticPath = isProd 
+  ? path.join(__dirname, 'public') 
+  : path.join(__dirname, '../dist/public');
+
+console.log(`[INFO] Serving static files from: ${staticPath} (Mode: ${isProd ? 'PROD' : 'DEV'})`);
+app.use(express.static(staticPath));
+// -------------------------------
+
 app.use(express.json());
 
 // #endregion
@@ -324,7 +336,13 @@ app.delete('/api/states/:filename', (req, res) => {
 /** SPA catch-all */
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.endsWith('.html')) return next();
-  res.sendFile(path.join(PROJECT_ROOT, 'public', 'index.html'));
+  
+  // Nutzt denselben staticPath Logik oder explizit den Pfad zur index.html
+  const indexHtmlPath = isProd 
+    ? path.join(__dirname, 'public', 'index.html')
+    : path.join(__dirname, '../dist/public', 'index.html');
+    
+  res.sendFile(indexHtmlPath);
 });
 
 // #endregion

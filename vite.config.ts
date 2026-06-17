@@ -17,7 +17,9 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: '../../dist/public',
+    // DIESER PFAD HAT FUNKTIONIERT (siehe Ihr erstes Build-Log)
+    // Er baut nach dist/public (relativ zum Projekt-Root)
+    outDir: '../../dist/public', 
     emptyOutDir: true,
     rollupOptions: {
       input: {
