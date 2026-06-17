@@ -1,0 +1,49 @@
+slug: floorball-gf-tournament
+name: GF – Tournament Matches
+isDefault: false
+
+periods:
+  count: 2
+  durationMinutes: 20
+  breakMinutes: 10
+
+overtime:
+  enabled: false
+  periods: 1
+  durationMinutes: 10
+  suddenDeath: true
+  breakMinutes: 10
+
+shootout:
+  enabled: false
+  breakMinutes: 5
+
+penalties:
+  maxActiveSlots: 2
+  queueEnabled: true
+  queueOrderEditable: true
+  types:
+    - id: minor
+      label: "2 Min"
+      durationSeconds: 120
+      displayMode: slot
+      clearableByGoal: true
+
+    - id: major
+      label: "5 Min"
+      durationSeconds: 300
+      displayMode: slot
+      clearableByGoal: false
+
+    - id: misconduct
+      label: "10'"
+      durationSeconds: 600
+      displayMode: badge
+      clearableByGoal: false
+
+    - id: minor2p2
+      label: "2+2 Min"
+      durationSeconds: 240
+      displayMode: slot
+      clearableByGoal: true
+      chainSeconds: 120
