@@ -1,0 +1,9 @@
+node_modules/
+.env
+/generated/prisma
+dist/
+/claude-upload
+*.pid
+.server.pid
+*.code-workspace
+.vscode/
