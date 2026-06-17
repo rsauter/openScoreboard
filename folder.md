@@ -1,0 +1,131 @@
+# Project Structure: openScoreboard
+
+Generated on: 2026-06-17 22:14:03
+
+## File Tree
+
+- **claude_upload/**
+  - **.gitignore**
+  - **ARCHITECTURE.md**
+  - **package.json**
+  - **README.md**
+  - **server.ts**
+  - **sports-templates_floorball-gf-single-nl-finals.yaml**
+  - **sports-templates_floorball-gf-single-tournament.yaml**
+  - **sports-templates_floorball-gf-single.yaml**
+  - **sports-templates_floorball-gf-tournament-finals.yaml**
+  - **sports-templates_floorball-gf-tournament.yaml**
+  - **sports-templates_floorball-kf-ejuniors.yaml**
+  - **sports-templates_floorball-kf-single.yaml**
+  - **sports-templates_floorball-kf-tournament-finals.yaml**
+  - **sports-templates_floorball-kf-tournament.yaml**
+  - **sports-templates_handball.yaml**
+  - **sports-templates_icehockey-nl-playoff.yaml**
+  - **src_client_App.vue**
+  - **src_client_components_TopNav.vue**
+  - **src_client_display.html**
+  - **src_client_display.ts**
+  - **src_client_i18n_de.json**
+  - **src_client_i18n_en.json**
+  - **src_client_i18n_fr.json**
+  - **src_client_i18n_index.ts**
+  - **src_client_i18n_it.json**
+  - **src_client_index.html**
+  - **src_client_index.ts**
+  - **src_client_pages_Display.vue**
+  - **src_client_pages_GameStart.vue**
+  - **src_client_pages_Operator.vue**
+  - **src_client_pages_Settings.vue**
+  - **src_client_router_index.ts**
+  - **src_client_shared.ts**
+  - **src_client_style.css**
+  - **src_shared_types.ts**
+  - **tsconfig.json**
+  - **tsconfig.server.json**
+  - **vite.config.ts**
+- **dist/**
+  - **public/**
+    - **assets/**
+      - **display-bJYwX2zY.js**
+      - **en-C0f82Vu-.js**
+      - **GameStart-FL1UNd9E.js**
+      - **logo_color_onlyhalo-B-iyJI9f.svg**
+      - **logo_color_standard-CQPTYun-.svg**
+      - **main-Br9qc72N.js**
+      - **main-C2Pomx1f.css**
+      - **Operator-9-Ab3ERc.js**
+      - **Settings-hOSG1pAm.js**
+    - **display-bJYwX2zY.js**
+    - **en-C0f82Vu-.js**
+    - **GameStart-FL1UNd9E.js**
+    - **logo_color_onlyhalo-B-iyJI9f.svg**
+    - **logo_color_standard-CQPTYun-.svg**
+    - **main-Br9qc72N.js**
+    - **main-C2Pomx1f.css**
+    - **Operator-9-Ab3ERc.js**
+    - **Settings-hOSG1pAm.js**
+  - **src/**
+    - **shared/**
+      - **types.js**
+    - **types.js**
+  - **types.js**
+- **public/**
+  - **assets/**
+    - **display-BxFUjOvj.js**
+    - **en-7KdQducm.js**
+    - **GameStart-D0UWBg4y.js**
+    - **logo_color_onlyhalo-B-iyJI9f.svg**
+    - **logo_color_standard-CQPTYun-.svg**
+    - **main-C-QQywU_.css**
+    - **main-iUlbNpW9.js**
+    - **Operator-BGPNIi2u.js**
+    - **Settings-B_TwgiRm.js**
+  - **display-BxFUjOvj.js**
+  - **en-7KdQducm.js**
+  - **GameStart-D0UWBg4y.js**
+  - **logo_color_onlyhalo-B-iyJI9f.svg**
+  - **logo_color_standard-CQPTYun-.svg**
+  - **main-C-QQywU_.css**
+  - **main-iUlbNpW9.js**
+  - **Operator-BGPNIi2u.js**
+  - **Settings-B_TwgiRm.js**
+- **sports-templates/**
+  - **floorball-gf-single-nl-finals.yaml**
+  - **floorball-gf-single-tournament.yaml**
+  - **floorball-gf-single.yaml**
+  - **floorball-gf-tournament-finals.yaml**
+  - **floorball-gf-tournament.yaml**
+  - **floorball-kf-ejuniors.yaml**
+  - **floorball-kf-single.yaml**
+  - **floorball-kf-tournament-finals.yaml**
+  - **floorball-kf-tournament.yaml**
+  - **handball.yaml**
+  - **icehockey-nl-playoff.yaml**
+- **src/**
+  - **client/**
+    - **assets/**
+      - **logo_color_onlyhalo.svg**
+      - **logo_color_standard.svg**
+    - **components/**
+      - **StatusBar.vue**
+      - **TopNav.vue**
+    - **i18n/**
+      - **de.json**
+      - **en.json**
+      - **fr.json**
+      - **index.ts**
+      - **it.json**
+    - **pages/**
+      - **Display.vue**
+      - **GameStart.vue**
+      - **Operator.vue**
+      - **Settings.vue**
+    - **router/**
+      - **index.ts**
+    - **index.ts**
+  - **shared/**
+    - **types.ts**
+  - **types.ts**
+- **state-archive/**
+  - **state_2026-06-17T18-04-47_T1-vs-T2.json**
+- **state_2026-06-17T18-04-47_T1-vs-T2.json**
