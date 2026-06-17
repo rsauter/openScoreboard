@@ -7,3 +7,4 @@ dist/
 .server.pid
 *.code-workspace
 .vscode/
+state.json
