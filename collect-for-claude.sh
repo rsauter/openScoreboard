@@ -1,16 +1,16 @@
 #!/bin/bash
-# collect_for_claude.sh — openScoreboard
+# collect-for-claude.sh — openScoreboard
 #
-# Sammelt alle relevanten Projektdateien in ein flaches Verzeichnis,
-# damit sie bequem ins Claude-Projekt hochgeladen werden können.
-# Pfade werden mit Unterstrichen statt Schrägstrichen abgeflacht,
-# z.B. src/client/pages/GameStart.vue → src_client_pages_GameStart.vue
+# Collects all relevant project files into a flat directory so they can
+# be conveniently uploaded to the Claude project.
+# Paths are flattened using underscores instead of slashes, e.g.
+# src/client/pages/GameStart.vue → src_client_pages_GameStart.vue
 #
 # Usage:
-#   chmod +x collect_for_claude.sh
-#   ./collect_for_claude.sh
+#   chmod +x collect-for-claude.sh
+#   ./collect-for-claude.sh
 #
-# Ergebnis liegt in ./claude_upload/
+# Result is placed in ./claude_upload/
 
 set -e
 
@@ -18,8 +18,8 @@ OUT_DIR="./claude_upload"
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
-# Dateien/Verzeichnisse, die eingesammelt werden sollen.
-# Anpassen falls sich die Projektstruktur ändert.
+# Files/patterns to collect.
+# Adjust if the project structure changes.
 INCLUDE_PATTERNS=(
   "package.json"
   "tsconfig.json"
@@ -27,6 +27,7 @@ INCLUDE_PATTERNS=(
   "vite.config.ts"
   "server.ts"
   "README.md"
+  "ARCHITECTURE.md"
   ".gitignore"
   "src/**/*.ts"
   "src/**/*.vue"
@@ -37,7 +38,7 @@ INCLUDE_PATTERNS=(
   "sports-templates/*.yml"
 )
 
-# Verzeichnisse, die NIE eingesammelt werden (auch falls sie zufällig matchen)
+# Directories that are NEVER collected (even if they happen to match a pattern)
 EXCLUDE_DIRS=(
   "node_modules"
   "dist"
@@ -58,20 +59,22 @@ is_excluded() {
 
 count=0
 for pattern in "${INCLUDE_PATTERNS[@]}"; do
-  # globstar für ** Patterns aktivieren
+  # enable globstar for ** patterns
   shopt -s globstar nullglob
   for file in $pattern; do
     [[ -f "$file" ]] || continue
     is_excluded "$file" && continue
 
-    # Pfad abflachen: / → _
+    # flatten path: / → _
     flat_name=$(echo "$file" | sed 's/\//_/g')
     cp "$file" "$OUT_DIR/$flat_name"
+    echo "  + $file → $flat_name"
     count=$((count + 1))
   done
   shopt -u globstar nullglob
 done
 
-echo "✅ $count Dateien gesammelt in $OUT_DIR/"
 echo ""
-echo "Nächster Schritt: Inhalt von $OUT_DIR ins Claude-Projekt hochladen."
+echo "✅ $count file(s) collected in $OUT_DIR/"
+echo ""
+echo "Next step: upload the contents of $OUT_DIR to the Claude project."

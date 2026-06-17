@@ -48,6 +48,53 @@
       </div>
     </div>
 
+    <!-- ─── Beendete Spiele (Archiv) ────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.archive.title') }}</h2>
+
+        <div v-if="archiveLoading" class="opacity-60 text-sm">
+          {{ t('settings.archive.loading') }}
+        </div>
+
+        <div v-else-if="archiveError" class="alert alert-error text-sm">
+          {{ t('settings.archive.loadError') }}
+        </div>
+
+        <div v-else-if="archivedStates.length === 0" class="opacity-60 text-sm">
+          {{ t('settings.archive.empty') }}
+        </div>
+
+        <template v-else>
+          <div v-if="archivedStates.length > manyThreshold" class="alert alert-warning text-sm">
+            {{ t('settings.archive.many', { count: archivedStates.length }) }}
+          </div>
+
+          <ul class="flex flex-col divide-y divide-base-content/10">
+            <li
+              v-for="entry in archivedStates"
+              :key="entry.filename"
+              class="flex items-center justify-between gap-3 py-2"
+            >
+              <div class="flex flex-col min-w-0">
+                <span class="font-medium truncate">
+                  {{ t('settings.archive.score', { home: entry.homeTeam, away: entry.awayTeam, homeScore: entry.homeScore, awayScore: entry.awayScore }) }}
+                </span>
+                <span class="text-xs opacity-60">{{ formatTimestamp(entry.archivedAt) }}</span>
+              </div>
+              <button
+                class="btn btn-ghost btn-sm btn-circle text-error shrink-0"
+                :aria-label="t('common.delete')"
+                @click="deleteArchivedState(entry)"
+              >
+                ✕
+              </button>
+            </li>
+          </ul>
+        </template>
+      </div>
+    </div>
+
     <!-- ─── About ────────────────────────────────────────────────────────── -->
     <div class="card bg-base-200 shadow">
       <div class="card-body gap-4">
@@ -64,9 +111,11 @@
     
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { setLocale, type Locale } from '../i18n';
+import { showConfirm, showToast } from '../shared';
+import type { ArchivedStateInfo } from '../../shared/types';
 
 const { t, locale } = useI18n();
 
@@ -122,4 +171,52 @@ const themeSwatches: Record<string, string[]> = {
   nord:       ['#2e3440', '#5e81ac', '#81a1c1', '#88c0d0'],
   sunset:     ['#f0ebe3', '#d05b3a', '#d06c4d', '#d07a66'],
 };
+
+// ─── Beendete Spiele (Archiv) ──────────────────────────────────────────────────
+const archivedStates  = ref<ArchivedStateInfo[]>([]);
+const archiveLoading  = ref(true);
+const archiveError    = ref(false);
+const manyThreshold   = 20;
+
+async function loadArchivedStates(): Promise<void> {
+  archiveLoading.value = true;
+  archiveError.value   = false;
+  try {
+    const res = await fetch('/api/states');
+    if (!res.ok) throw new Error('Request failed');
+    archivedStates.value = await res.json();
+  } catch {
+    archiveError.value = true;
+  } finally {
+    archiveLoading.value = false;
+  }
+}
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString(locale.value, {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+async function deleteArchivedState(entry: ArchivedStateInfo): Promise<void> {
+  const ok = await showConfirm({
+    title:   t('settings.archive.deleteTitle'),
+    message: t('settings.archive.deleteMessage', { home: entry.homeTeam, away: entry.awayTeam }),
+    danger:  true,
+  });
+  if (!ok) return;
+
+  try {
+    const res = await fetch(`/api/states/${encodeURIComponent(entry.filename)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Request failed');
+    archivedStates.value = archivedStates.value.filter(e => e.filename !== entry.filename);
+    showToast(t('settings.archive.deleted'), 'success');
+  } catch {
+    showToast(t('settings.archive.deleteFailed'), 'error');
+  }
+}
+
+onMounted(loadArchivedStates);
 </script>

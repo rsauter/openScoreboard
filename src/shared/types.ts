@@ -198,3 +198,20 @@ export interface SportsTemplate {
 }
 
 // #endregion
+
+// #region ─── Archived Game States ──────────────────────────────────────────────────────
+
+/** Metadata for a finished/archived game state file, as listed in Settings. */
+export interface ArchivedStateInfo {
+  filename:    string;   // e.g. state_2026-06-17T20-15-00_Home-vs-Away.json
+  archivedAt:  string;   // ISO timestamp, parsed from the filename
+  homeTeam:    string;
+  awayTeam:    string;
+  homeScore:   number;
+  awayScore:   number;
+  homeShootout: number;
+  awayShootout: number;
+  phase:       GamePhase;
+}
+
+// #endregion

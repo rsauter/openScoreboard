@@ -262,5 +262,15 @@
   "nav.settings": "Settings",
   "settings.language": "Language",
   "settings.theme": "Theme",
-  "settings.about": "About"
+  "settings.about": "About",
+  "settings.archive.title": "Finished games",
+  "settings.archive.loading": "Loading saved games...",
+  "settings.archive.empty": "No finished games saved.",
+  "settings.archive.score": "{home} {homeScore} : {awayScore} {away}",
+  "settings.archive.many": "There are {count} saved games. You can delete ones you no longer need using the X.",
+  "settings.archive.deleteTitle": "Delete game",
+  "settings.archive.deleteMessage": "Really delete saved game \"{home} vs {away}\"?",
+  "settings.archive.deleted": "Saved game deleted.",
+  "settings.archive.deleteFailed": "Delete failed.",
+  "settings.archive.loadError": "Error loading saved games."
 }
