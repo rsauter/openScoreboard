@@ -262,7 +262,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { fmt, phaseLabel } from '../shared';
+import { fmt, phaseLabel, displayClockSeconds } from '../shared';
 import type { GameState, ClientCommand, Penalty } from '../../shared/types';
 
 const { t } = useI18n();
@@ -287,7 +287,9 @@ function wsUrl() {
 }
 
 // ── Computed ──────────────────────────────────────────────────────────────────
-const formattedTime = computed(() => fmt(gameState.value?.timeRemaining ?? 0));
+const formattedTime = computed(() =>
+  gameState.value ? fmt(displayClockSeconds(gameState.value)) : fmt(0)
+);
 
 const phaseText = computed(() =>
   gameState.value ? phaseLabel(gameState.value, t) : '–'
@@ -297,6 +299,18 @@ const showTimeAdjust = computed(() => {
   if (!gameState.value) return false;
   return !gameState.value.running && !gameState.value.timeoutActive
     && ['period', 'overtime'].includes(gameState.value.phase);
+});
+
+// True only while the clock is actually displaying elapsed time (countUp template
+// AND we're in a period/overtime phase — breaks always show remaining time).
+const isCountingUp = computed(() => {
+  if (!gameState.value) return false;
+  return gameState.value.countUp && ['period', 'overtime'].includes(gameState.value.phase);
+});
+
+const currentPhaseDuration = computed(() => {
+  if (!gameState.value) return 0;
+  return gameState.value.phase === 'overtime' ? gameState.value.otDuration : gameState.value.periodDuration;
 });
 
 const formattedTimeoutRemaining = computed(() => fmt(gameState.value?.timeoutRemaining ?? 0));
@@ -368,7 +382,13 @@ function onClockEscape() { clockDisplayValue.value = formattedTime.value; clockI
 function onClockEnter() {
   const raw   = clockInputEl.value?.value ?? '';
   const match = raw.match(/^(\d{1,2}):(\d{2})$/);
-  if (match) sendCmd('SET_TIME', { seconds: parseInt(match[1]) * 60 + parseInt(match[2]) } as any);
+  if (match) {
+    const enteredSeconds = parseInt(match[1]) * 60 + parseInt(match[2]);
+    const seconds = isCountingUp.value
+      ? Math.max(0, currentPhaseDuration.value - enteredSeconds)
+      : enteredSeconds;
+    sendCmd('SET_TIME', { seconds } as any);
+  }
   clockInputEl.value?.blur();
 }
 
@@ -447,7 +467,12 @@ function commitPenaltyTime(id: number) {
 function onPenaltyTimeEnter(id: number) { commitPenaltyTime(id); }
 function onPenaltyTimeBlur(id: number)  { if (editingPenaltyId.value === id) commitPenaltyTime(id); }
 
-function adjustTime(delta: number) { sendCmd('ADJUST_TIME', { delta } as any); }
+function adjustTime(delta: number) {
+  // delta is expressed relative to the displayed clock. timeRemaining itself always
+  // counts down, so when displaying elapsed time (countUp) the sign must be flipped.
+  const serverDelta = isCountingUp.value ? -delta : delta;
+  sendCmd('ADJUST_TIME', { delta: serverDelta } as any);
+}
 
 function confirmReset() {
   if (!confirm(t('operator.resetConfirm'))) return;
@@ -491,7 +516,7 @@ function connectWebSocket() {
         penalty.value.typeId = types[0].id;
       }
       if (document.activeElement !== clockInputEl.value) {
-        clockDisplayValue.value = fmt(message.state.timeRemaining);
+        clockDisplayValue.value = fmt(displayClockSeconds(message.state));
       }
     }
     if (message.type === 'BUZZER' && message.reason) {

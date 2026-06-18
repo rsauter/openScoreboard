@@ -1,6 +1,7 @@
 slug: floorball-gf-single-nl-finals
 name: GF – Single Matches (NLA/NLB, Finals)
 isDefault: true
+countUp: true
 
 periods:
   count: 3

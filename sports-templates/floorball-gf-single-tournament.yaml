@@ -1,6 +1,7 @@
 slug: floorball-gf-single-tournament
 name: GF – Single Tournament Matches
 isDefault: false
+countUp: true
 
 periods:
   count: 3
