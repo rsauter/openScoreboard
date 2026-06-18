@@ -278,5 +278,6 @@
   "settings.archive.loadError": "Fehler beim Laden der gespeicherten Spiele.",
   "gamestart.countDirection": "Spielzeit zählt",
   "gamestart.countUp": "aufwärts",
-  "gamestart.countDown": "abwärts"
+  "gamestart.countDown": "abwärts",
+  "operator.horn": "Horn"
 }
