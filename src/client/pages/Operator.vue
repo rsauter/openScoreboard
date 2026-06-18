@@ -39,6 +39,7 @@
             <button @click="sendCmd('START')"      class="btn btn-success btn-sm">{{ t('operator.start') }}</button>
             <button @click="sendCmd('STOP')"       class="btn btn-error btn-sm">{{ t('operator.stop') }}</button>
             <button @click="sendCmd('NEXT_PHASE')" class="btn btn-warning btn-sm">{{ t('operator.nextPhase') }}</button>
+            <button @click="sendCmd('BUZZER_MANUAL')" class="btn btn-info btn-sm">📢 {{ t('operator.horn') }}</button>
             <button @click="confirmReset"          class="btn btn-ghost btn-sm">{{ t('operator.reset') }}</button>
           </div>
         </div>
@@ -264,6 +265,8 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { fmt, phaseLabel, displayClockSeconds } from '../shared';
 import type { GameState, ClientCommand, Penalty } from '../../shared/types';
+import hornShortUrl from '../assets/horn-short.mp3';
+import hornLongUrl  from '../assets/horn-long.mp3';
 
 const { t } = useI18n();
 const gameState         = ref<GameState | null>(null);
@@ -520,7 +523,7 @@ function connectWebSocket() {
       }
     }
     if (message.type === 'BUZZER' && message.reason) {
-      playBuzzer(message.reason as any);
+      playBuzzer(message.reason);
     }
   });
 }
@@ -530,25 +533,23 @@ function sendCmd(cmd: ClientCommand['cmd'], extra: Partial<ClientCommand> = {}) 
   ws.send(JSON.stringify({ cmd, ...extra }));
 }
 
-// ── Buzzer ────────────────────────────────────────────────────────────────────
-function playBuzzer(reason: 'period' | 'timeout' | 'penalty') {
+// ── Horn ──────────────────────────────────────────────────────────────────────
+// Played directly in the operator's browser — the operator notebook is connected
+// to the venue's mixing desk with its own level, so this drives the hall PA.
+const hornShort = new Audio(hornShortUrl);
+const hornLong  = new Audio(hornLongUrl);
+
+function playBuzzer(reason: 'period' | 'timeout' | 'penalty' | 'manual') {
   try {
-    const ctx  = new AudioContext();
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    const osc = ctx.createOscillator();
-    osc.connect(gain);
-    if (reason === 'period') {
-      osc.frequency.value = 440; gain.gain.value = 0.4;
-      osc.start(); osc.stop(ctx.currentTime + 1.2);
+    if (reason === 'period' || reason === 'manual') {
+      hornLong.currentTime = 0;
+      void hornLong.play();
     } else if (reason === 'timeout') {
-      osc.frequency.value = 880; gain.gain.value = 0.3;
-      osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } else {
-      osc.frequency.value = 660; gain.gain.value = 0.2;
-      osc.start(); osc.stop(ctx.currentTime + 0.3);
+      hornShort.currentTime = 0;
+      void hornShort.play();
     }
-  } catch { /* AudioContext not available */ }
+    // penalty: intentionally silent — only relevant to bench, not the whole hall.
+  } catch { /* Audio playback not available */ }
 }
 
 onMounted(() => {
