@@ -100,6 +100,12 @@ export interface GameState {
   hasShootout:     boolean;
   soBreakDuration: number;  // Seconds
 
+  /** If true, the period/overtime clock displays elapsed time (counting up from 0) instead
+   *  of remaining time. Breaks always display remaining time regardless of this flag.
+   *  Internal timeRemaining always counts down; this only affects display formatting. */
+  countUp:         boolean;
+
+
   // Penalty configuration (from template)
   penaltyTypes:    PenaltyType[];
   penaltySettings: PenaltySettings;
@@ -143,7 +149,7 @@ export interface GameState {
 /** Messages sent from the server to all connected clients. */
 export type ServerMessage =
   | { type: 'STATE'; state: GameState }
-  | { type: 'BUZZER'; reason: 'period' | 'timeout' | 'penalty' | 'manual'; id?: number };
+  | { type: 'BUZZER'; reason: 'period' | 'timeout' | 'penalty'; id?: number };
 
 // #endregion
 
@@ -168,8 +174,7 @@ export type ClientCommand =
   | { cmd: 'TIMEOUT'; team: 'home' | 'away' }
   | { cmd: 'ADJUST_TIME'; delta: number }
   | { cmd: 'SET_TIME'; seconds: number }
-  | { cmd: 'SET_PENALTY_TIME'; id: number; seconds: number }
-  | { cmd: 'BUZZER_MANUAL' };
+  | { cmd: 'SET_PENALTY_TIME'; id: number; seconds: number };
 
 // #endregion
 
@@ -191,6 +196,9 @@ export interface SportsTemplate {
   otBreakDuration: number;  // Minutes
   hasShootout:     boolean;
   soBreakDuration: number;  // Minutes
+  /** If true, the period/overtime clock displays elapsed time (counting up) instead of
+   *  remaining time. Breaks always display remaining time regardless of this flag. */
+  countUp:         boolean;
   isDefault:       boolean;
   createdAt:       string;
   // Penalty configuration
