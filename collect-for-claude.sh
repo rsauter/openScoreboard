@@ -51,6 +51,7 @@ collect "./src/client/style.css"
 collect "./src/client/display.html"
 collect "./src/client/display.ts"
 collect "./src/client/App.vue"
+collect "./src/client/vite-env.d.ts"
 
 # ── src/client/components ──────────────────────────────────────────────────
 collect "./src/client/components/TopNav.vue"

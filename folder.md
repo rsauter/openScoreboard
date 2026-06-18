@@ -1,12 +1,12 @@
 # Project Structure: openScoreboard
 
-Generated on: 2026-06-17 22:14:03
+Generated on: 2026-06-18 19:00:52
 
 ## File Tree
 
 - **claude_upload/**
-  - **.gitignore**
   - **ARCHITECTURE.md**
+  - **.gitignore**
   - **package.json**
   - **README.md**
   - **server.ts**
@@ -39,6 +39,7 @@ Generated on: 2026-06-17 22:14:03
   - **src_client_router_index.ts**
   - **src_client_shared.ts**
   - **src_client_style.css**
+  - **src_client_vite-env.d.ts**
   - **src_shared_types.ts**
   - **tsconfig.json**
   - **tsconfig.server.json**
@@ -46,24 +47,28 @@ Generated on: 2026-06-17 22:14:03
 - **dist/**
   - **public/**
     - **assets/**
-      - **display-bJYwX2zY.js**
-      - **en-C0f82Vu-.js**
-      - **GameStart-FL1UNd9E.js**
+      - **display-DRXbdH63.js**
+      - **en-B87uWbMz.js**
+      - **GameStart-DGjebjwv.js**
+      - **horn-long-4vPThREc.mp3**
+      - **horn-short-D_W9wQSI.mp3**
       - **logo_color_onlyhalo-B-iyJI9f.svg**
       - **logo_color_standard-CQPTYun-.svg**
-      - **main-Br9qc72N.js**
-      - **main-C2Pomx1f.css**
-      - **Operator-9-Ab3ERc.js**
-      - **Settings-hOSG1pAm.js**
-    - **display-bJYwX2zY.js**
-    - **en-C0f82Vu-.js**
-    - **GameStart-FL1UNd9E.js**
+      - **main-BS0ZAH61.js**
+      - **main-CWClITwk.css**
+      - **Operator-CDFcG2YY.js**
+      - **Settings-CwiH6yG8.js**
+    - **display-DRXbdH63.js**
+    - **en-B87uWbMz.js**
+    - **GameStart-DGjebjwv.js**
+    - **horn-long-4vPThREc.mp3**
+    - **horn-short-D_W9wQSI.mp3**
     - **logo_color_onlyhalo-B-iyJI9f.svg**
     - **logo_color_standard-CQPTYun-.svg**
-    - **main-Br9qc72N.js**
-    - **main-C2Pomx1f.css**
-    - **Operator-9-Ab3ERc.js**
-    - **Settings-hOSG1pAm.js**
+    - **main-BS0ZAH61.js**
+    - **main-CWClITwk.css**
+    - **Operator-CDFcG2YY.js**
+    - **Settings-CwiH6yG8.js**
   - **src/**
     - **shared/**
       - **types.js**
@@ -104,6 +109,9 @@ Generated on: 2026-06-17 22:14:03
 - **src/**
   - **client/**
     - **assets/**
+      - **horn-double.mp3**
+      - **horn-long.mp3**
+      - **horn-short.mp3**
       - **logo_color_onlyhalo.svg**
       - **logo_color_standard.svg**
     - **components/**
@@ -126,6 +134,4 @@ Generated on: 2026-06-17 22:14:03
   - **shared/**
     - **types.ts**
   - **types.ts**
-- **state-archive/**
-  - **state_2026-06-17T18-04-47_T1-vs-T2.json**
-- **state_2026-06-17T18-04-47_T1-vs-T2.json**
+- **types.ts**
