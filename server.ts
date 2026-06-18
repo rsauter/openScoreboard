@@ -454,25 +454,30 @@ function startTick(): void {
     const newTimeRemaining = Math.max(0, state.timeRemaining - elapsed);
     const actualElapsed    = state.timeRemaining - newTimeRemaining;
 
-    state.penalties = state.penalties.map(p => {
-      if (p.status !== 'running') return p;
-      const rem          = Math.max(0, p.remaining - actualElapsed);
-      const penType      = state.penaltyTypes.find(t => t.id === p.typeId);
-      const chainAt      = penType?.chainSeconds ?? null;
-      const nowClearable = chainAt !== null && rem <= chainAt ? false : p.clearableByGoal;
-      if (rem <= 0 && p.remaining > 0) {
-        broadcast({ type: 'BUZZER', reason: 'penalty', id: p.id });
-        return { ...p, remaining: 0, status: 'expired' as const, clearableByGoal: nowClearable };
-      }
-      return { ...p, remaining: rem, clearableByGoal: nowClearable };
-    });
+    // Strafen laufen nur während echter Spielzeit (period/overtime), nicht in Pausen.
+    const isPlayPhase = state.phase === 'period' || state.phase === 'overtime';
 
-    const expired       = state.penalties.filter(p => p.status === 'expired');
-    const expiredIds    = expired.map(p => p.id);
-    const expiredByTeam = new Set(expired.map(p => p.team));
-    state.penalties = state.penalties.filter(p => p.status !== 'expired');
-    expiredByTeam.forEach(t => promoteQueue(t));
-    expiredIds.forEach(id => unblockWaiting(id));
+    if (isPlayPhase) {
+      state.penalties = state.penalties.map(p => {
+        if (p.status !== 'running') return p;
+        const rem          = Math.max(0, p.remaining - actualElapsed);
+        const penType      = state.penaltyTypes.find(t => t.id === p.typeId);
+        const chainAt      = penType?.chainSeconds ?? null;
+        const nowClearable = chainAt !== null && rem <= chainAt ? false : p.clearableByGoal;
+        if (rem <= 0 && p.remaining > 0) {
+          broadcast({ type: 'BUZZER', reason: 'penalty', id: p.id });
+          return { ...p, remaining: 0, status: 'expired' as const, clearableByGoal: nowClearable };
+        }
+        return { ...p, remaining: rem, clearableByGoal: nowClearable };
+      });
+
+      const expired       = state.penalties.filter(p => p.status === 'expired');
+      const expiredIds    = expired.map(p => p.id);
+      const expiredByTeam = new Set(expired.map(p => p.team));
+      state.penalties = state.penalties.filter(p => p.status !== 'expired');
+      expiredByTeam.forEach(t => promoteQueue(t));
+      expiredIds.forEach(id => unblockWaiting(id));
+    }
 
     state.timeRemaining = newTimeRemaining;
     if (state.timeRemaining <= 0 && state.running) {
