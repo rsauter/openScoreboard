@@ -278,5 +278,6 @@
   "settings.archive.loadError": "Erreur lors du chargement des matchs enregistrés.",
   "gamestart.countDirection": "Le temps compte",
   "gamestart.countUp": "vers le haut",
-  "gamestart.countDown": "vers le bas"
+  "gamestart.countDown": "vers le bas",
+  "operator.horn": "Sirène"
 }

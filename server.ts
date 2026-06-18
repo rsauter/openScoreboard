@@ -705,6 +705,10 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
       }
       break;
     }
+
+    case 'BUZZER_MANUAL':
+      broadcast({ type: 'BUZZER', reason: 'manual' });
+      break;
   }
 
   broadcast({ type: 'STATE', state });

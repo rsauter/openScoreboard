@@ -278,5 +278,6 @@
   "settings.archive.loadError": "Error loading saved games.",
   "gamestart.countDirection": "Clock counts",
   "gamestart.countUp": "up",
-  "gamestart.countDown": "down"
+  "gamestart.countDown": "down",
+  "operator.horn": "Horn"
 }

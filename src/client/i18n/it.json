@@ -278,5 +278,6 @@
   "settings.archive.loadError": "Errore durante il caricamento delle partite salvate.",
   "gamestart.countDirection": "Il tempo conta",
   "gamestart.countUp": "in avanti",
-  "gamestart.countDown": "a ritroso"
+  "gamestart.countDown": "a ritroso",
+  "operator.horn": "Sirena"
 }
