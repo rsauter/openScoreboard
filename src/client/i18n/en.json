@@ -86,6 +86,7 @@
   "operator.start": "▶ Start",
   "operator.stop": "⏸ Stop",
   "operator.nextPhase": "⏭ Next phase",
+  "operator.horn": "📢 Horn",
   "operator.reset": "🔄 Reset",
   "operator.resetConfirm": "Really reset the game? You will be redirected to Game Start.",
   "operator.score": "Score",

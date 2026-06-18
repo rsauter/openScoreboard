@@ -86,6 +86,7 @@
   "operator.start": "▶ Démarrer",
   "operator.stop": "⏸ Arrêter",
   "operator.nextPhase": "⏭ Phase suivante",
+  "operator.horn": "📢 Corne",
   "operator.reset": "🔄 Réinitialiser",
   "operator.resetConfirm": "Vraiment réinitialiser le match ? Vous serez redirigé vers le démarrage.",
   "operator.score": "Score",
