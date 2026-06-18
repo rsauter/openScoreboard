@@ -143,7 +143,7 @@ export interface GameState {
 /** Messages sent from the server to all connected clients. */
 export type ServerMessage =
   | { type: 'STATE'; state: GameState }
-  | { type: 'BUZZER'; reason: 'period' | 'timeout' | 'penalty'; id?: number };
+  | { type: 'BUZZER'; reason: 'period' | 'timeout' | 'penalty' | 'manual'; id?: number };
 
 // #endregion
 
@@ -168,7 +168,8 @@ export type ClientCommand =
   | { cmd: 'TIMEOUT'; team: 'home' | 'away' }
   | { cmd: 'ADJUST_TIME'; delta: number }
   | { cmd: 'SET_TIME'; seconds: number }
-  | { cmd: 'SET_PENALTY_TIME'; id: number; seconds: number };
+  | { cmd: 'SET_PENALTY_TIME'; id: number; seconds: number }
+  | { cmd: 'BUZZER_MANUAL' };
 
 // #endregion
 

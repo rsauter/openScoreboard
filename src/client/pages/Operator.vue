@@ -31,6 +31,7 @@
             <button @click="sendCmd('START')"      class="btn btn-success btn-sm">{{ t('operator.start') }}</button>
             <button @click="sendCmd('STOP')"       class="btn btn-error btn-sm">{{ t('operator.stop') }}</button>
             <button @click="sendCmd('NEXT_PHASE')" class="btn btn-warning btn-sm">{{ t('operator.nextPhase') }}</button>
+            <button @click="sendCmd('BUZZER_MANUAL')" class="btn btn-info btn-sm">{{ t('operator.horn') }}</button>
             <button @click="confirmReset"          class="btn btn-ghost btn-sm">{{ t('operator.reset') }}</button>
           </div>
         </div>
@@ -254,7 +255,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { fmt, phaseLabel } from '../shared';
+import { fmt, phaseLabel, unlockHornAudio, playHornSound } from '../shared';
 import type { GameState, ClientCommand, Penalty } from '../../shared/types';
 
 const { t } = useI18n();
@@ -498,28 +499,30 @@ function sendCmd(cmd: ClientCommand['cmd'], extra: Partial<ClientCommand> = {}) 
 }
 
 // ── Buzzer ────────────────────────────────────────────────────────────────────
-function playBuzzer(reason: 'period' | 'timeout' | 'penalty') {
-  try {
-    const ctx  = new AudioContext();
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    const osc = ctx.createOscillator();
-    osc.connect(gain);
-    if (reason === 'period') {
-      osc.frequency.value = 440; gain.gain.value = 0.4;
-      osc.start(); osc.stop(ctx.currentTime + 1.2);
-    } else if (reason === 'timeout') {
-      osc.frequency.value = 880; gain.gain.value = 0.3;
-      osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } else {
+// Bei Periodenende, Timeout-Ende und manuellem Trigger: echte Hupen-MP3 (laut,
+// für die ganze Halle gedacht — kommt aus dem Gerät, auf dem diese Seite läuft).
+// horn-long.mp3 für Periodenende/manuell, horn-short.mp3 für Timeout-Ende.
+// Bei Strafzeit-Ende: bewusst nur ein leiser synthetischer Hinweiston für den
+// Operator selbst, keine laute Hupe.
+function playBuzzer(reason: 'period' | 'timeout' | 'penalty' | 'manual') {
+  if (reason === 'penalty') {
+    try {
+      const ctx  = new AudioContext();
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      osc.connect(gain);
       osc.frequency.value = 660; gain.gain.value = 0.2;
       osc.start(); osc.stop(ctx.currentTime + 0.3);
-    }
-  } catch { /* AudioContext not available */ }
+    } catch { /* AudioContext not available */ }
+    return;
+  }
+  playHornSound(reason);
 }
 
 onMounted(() => {
   connectWebSocket();
+  unlockHornAudio();
 });
 onUnmounted(() => {
   unmounted = true;
