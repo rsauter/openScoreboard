@@ -86,7 +86,6 @@
   "operator.start": "▶ Start",
   "operator.stop": "⏸ Stop",
   "operator.nextPhase": "⏭ Next phase",
-  "operator.horn": "📢 Horn",
   "operator.reset": "🔄 Reset",
   "operator.resetConfirm": "Really reset the game? You will be redirected to Game Start.",
   "operator.score": "Score",
@@ -276,5 +275,8 @@
   "settings.archive.deleteMessage": "Really delete saved game \"{home} vs {away}\"?",
   "settings.archive.deleted": "Saved game deleted.",
   "settings.archive.deleteFailed": "Delete failed.",
-  "settings.archive.loadError": "Error loading saved games."
+  "settings.archive.loadError": "Error loading saved games.",
+  "gamestart.countDirection": "Clock counts",
+  "gamestart.countUp": "up",
+  "gamestart.countDown": "down"
 }

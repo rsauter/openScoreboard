@@ -1,6 +1,7 @@
 slug: floorball-kf-tournament
 name: KF – Tournament Matches
 isDefault: false
+countUp: true
 
 periods:
   count: 2

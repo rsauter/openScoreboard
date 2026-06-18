@@ -86,7 +86,6 @@
   "operator.start": "▶ Avvia",
   "operator.stop": "⏸ Ferma",
   "operator.nextPhase": "⏭ Fase successiva",
-  "operator.horn": "📢 Sirena",
   "operator.reset": "🔄 Reset",
   "operator.resetConfirm": "Reimpostare davvero la partita? Sarai reindirizzato all'avvio.",
   "operator.score": "Punteggio",
@@ -276,5 +275,8 @@
   "settings.archive.deleteMessage": "Eliminare davvero la partita salvata \"{home} vs {away}\"?",
   "settings.archive.deleted": "Partita salvata eliminata.",
   "settings.archive.deleteFailed": "Eliminazione non riuscita.",
-  "settings.archive.loadError": "Errore durante il caricamento delle partite salvate."
+  "settings.archive.loadError": "Errore durante il caricamento delle partite salvate.",
+  "gamestart.countDirection": "Il tempo conta",
+  "gamestart.countUp": "in avanti",
+  "gamestart.countDown": "a ritroso"
 }

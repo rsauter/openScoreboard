@@ -7,7 +7,7 @@
       </div>
       <div class="clock-area">
         <div class="status-bullet" :class="bulletClass"></div>
-        <div class="clock" :class="clockClass">{{ state ? fmt(state.timeRemaining) : '20:00' }}</div>
+        <div class="clock" :class="clockClass">{{ formattedClock }}</div>
       </div>
       <div class="away-header">
         <span class="team-name">{{ state?.awayAbbr || state?.awayTeam || t('common.away') }}</span>
@@ -89,7 +89,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { fmt, phaseLabel } from '../shared';
+import { fmt, phaseLabel, displayClockSeconds } from '../shared';
 import type { GameState } from '../../shared/types';
 
 // ─── Local i18n (no vue-i18n: Display is a separate Vite entry point) ─────────
@@ -162,16 +162,10 @@ function connectWebSocket(): void {
     if (message.type === 'STATE' && message.state) {
       state.value = message.state;
     }
-    // Hinweis: BUZZER-Events werden bewusst hier ignoriert. Die Hupe wird
-    // ausschliesslich im Operator-Tab abgespielt — Display läuft typischerweise
-    // als 2. HDMI-Ausgang desselben Notebooks, doppelte/überlappende Wiedergabe
-    // beider Tabs soll vermieden werden.
   });
 }
 
-onMounted(() => {
-  connectWebSocket();
-});
+onMounted(() => { connectWebSocket(); });
 onUnmounted(() => {
   unmounted = true;
   if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -179,6 +173,10 @@ onUnmounted(() => {
 });
 
 // ─── Computed ──────────────────────────────────────────────────────────────────
+
+const formattedClock = computed(() =>
+  state.value ? fmt(displayClockSeconds(state.value)) : '20:00'
+);
 
 const clockClass = computed(() => {
   if (!state.value) return '';

@@ -87,6 +87,7 @@ function loadYamlTemplates(): void {
         otBreakDuration: data.overtime?.breakMinutes   ?? 5,
         hasShootout:     data.shootout?.enabled        ?? false,
         soBreakDuration: data.shootout?.breakMinutes   ?? 5,
+        countUp:         data.countUp                  ?? false,
         isDefault:       data.isDefault               ?? false,
         createdAt:       new Date().toISOString(),
         penaltyTypes:    (data.penalties?.types ?? []).map((t: any) => ({
@@ -134,7 +135,7 @@ function createInitialState(): GameState {
   return {
     numPeriods: 3, periodDuration: 1200, breakDuration: 600,
     hasOvertime: true, numOtPeriods: 1, otDuration: 300, otSuddenDeath: true,
-    otBreakDuration: 300, hasShootout: true, soBreakDuration: 180,
+    otBreakDuration: 300, hasShootout: true, soBreakDuration: 180, countUp: false,
     penaltyTypes:    DEFAULT_PENALTY_TYPES,
     penaltySettings: DEFAULT_PENALTY_SETTINGS,
     homeTeam: 'Home', awayTeam: 'Away',
@@ -516,6 +517,7 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
         otBreakDuration: c.otBreakDuration * 60,
         hasShootout:     c.hasShootout,
         soBreakDuration: c.soBreakDuration * 60,
+        countUp:         tmpl?.countUp ?? false,
         penaltyTypes:    penTypes,
         penaltySettings: penSettings,
         timeRemaining:   c.periodDuration  * 60,
@@ -703,10 +705,6 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
       }
       break;
     }
-
-    case 'BUZZER_MANUAL':
-      broadcast({ type: 'BUZZER', reason: 'manual' });
-      break;
   }
 
   broadcast({ type: 'STATE', state });
