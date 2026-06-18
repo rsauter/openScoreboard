@@ -5,6 +5,33 @@ export function fmt(s: number): string {
   return `${Math.floor(c / 60)}:${String(c % 60).padStart(2, '0')}`;
 }
 
+/** Phases whose duration the countUp flag applies to. Breaks always show remaining time. */
+const COUNT_UP_ELIGIBLE_PHASES = new Set(['period', 'overtime']);
+
+/**
+ * Returns the number of seconds to display on the main clock, taking the
+ * sport's countUp configuration into account. Internally, GameState.timeRemaining
+ * always counts down from the period/overtime/break duration to 0 — this function
+ * only affects what's shown to the user, never the underlying tick logic.
+ *
+ * - Breaks (pregame, break, ot_break, so_break) always display remaining time.
+ * - period/overtime display remaining time, unless countUp is set, in which case
+ *   they display elapsed time (duration - timeRemaining), counting up from 0.
+ */
+export function displayClockSeconds(
+  s: {
+    phase:          string;
+    timeRemaining:  number;
+    periodDuration: number;
+    otDuration:     number;
+    countUp:        boolean;
+  }
+): number {
+  if (!s.countUp || !COUNT_UP_ELIGIBLE_PHASES.has(s.phase)) return s.timeRemaining;
+  const duration = s.phase === 'overtime' ? s.otDuration : s.periodDuration;
+  return Math.max(0, duration - s.timeRemaining);
+}
+
 export function phaseLabel(
   s: {
     phase: string;
@@ -114,85 +141,3 @@ export function resolveConfirm(value: boolean): void {
   confirmState.value.resolve?.(value);
   confirmState.value.resolve = null;
 }
-
-// #region ─── Horn / Buzzer Sound ───────────────────────────────────────────────
-//
-// Spielt eine echte Hupen-Audiodatei im Browser ab, sobald der Server ein
-// BUZZER-Event sendet (Periodenende, Timeout-Ende, manueller Trigger).
-// Funktioniert identisch egal ob der Browser auf dem Pi selbst läuft (Klinke
-// → Pult) oder irgendwo im Web (Railway) — der Ton kommt immer aus dem Gerät,
-// auf dem die Seite gerade offen ist. Genutzt von Operator.vue.
-//
-// Browser blockieren Audio-Wiedergabe, bis der Nutzer einmal mit der Seite
-// interagiert hat (Autoplay-Policy). unlockHornAudio() sollte daher bei der
-// ersten Nutzer-Interaktion (z.B. erstem Klick irgendwo auf der Seite)
-// aufgerufen werden, damit die spätere automatische Wiedergabe nicht
-// stillschweigend fehlschlägt.
-//
-// Drei Sound-Dateien liegen unter src/client/assets/ (gleicher Ordner wie das
-// Logo) und werden daher über Vite's Bundler-Asset-Pipeline importiert statt
-// über einen festen public-URL-String — Vite hasht/bündelt sie automatisch:
-//   horn-long.mp3    Periodenende / Overtime-Ende / Spielende, und manueller Trigger
-//   horn-short.mp3   Timeout-Ende
-//   horn-double.mp3  aktuell ungenutzt — bereits eingebunden für spätere Anlässe
-
-import hornLongUrl   from './assets/horn-long.mp3';
-import hornShortUrl  from './assets/horn-short.mp3';
-import hornDoubleUrl from './assets/horn-double.mp3';
-
-export type HornVariant = 'long' | 'short' | 'double';
-
-const HORN_SOUND_URLS: Record<HornVariant, string> = {
-  long:   hornLongUrl,
-  short:  hornShortUrl,
-  double: hornDoubleUrl,
-};
-
-/** Welche Hupe bei welchem BUZZER-reason gespielt wird. */
-const HORN_FOR_REASON: Record<'period' | 'timeout' | 'manual', HornVariant> = {
-  period:  'long',
-  timeout: 'short',
-  manual:  'long',
-};
-
-const hornAudioCache = new Map<HornVariant, HTMLAudioElement>();
-let hornUnlocked = false;
-
-function getHornAudio(variant: HornVariant): HTMLAudioElement {
-  let audio = hornAudioCache.get(variant);
-  if (!audio) {
-    audio = new Audio(HORN_SOUND_URLS[variant]);
-    audio.preload = 'auto';
-    hornAudioCache.set(variant, audio);
-  }
-  return audio;
-}
-
-/** Einmalig bei einer echten Nutzer-Interaktion aufrufen (z.B. erster Klick),
- *  um die Browser-Autoplay-Sperre für alle Hupen-Varianten zu lösen. */
-export function unlockHornAudio(): void {
-  if (hornUnlocked) return;
-  hornUnlocked = true;
-  (Object.keys(HORN_SOUND_URLS) as HornVariant[]).forEach(variant => {
-    const audio = getHornAudio(variant);
-    // Stummer "Anspiel-Versuch", den Browser als Nutzer-Interaktion akzeptieren —
-    // schaltet spätere programmatische play()-Aufrufe ohne erneute Interaktion frei.
-    audio.muted = true;
-    audio.play()
-      .then(() => { audio.pause(); audio.currentTime = 0; audio.muted = false; })
-      .catch(() => { audio.muted = false; });
-  });
-}
-
-/** Spielt die passende Hupe für den gegebenen BUZZER-reason sofort ab. */
-export function playHornSound(reason: 'period' | 'timeout' | 'manual'): void {
-  const audio = getHornAudio(HORN_FOR_REASON[reason]);
-  audio.currentTime = 0;
-  audio.play().catch(() => {
-    // Autoplay vom Browser blockiert (noch keine Nutzer-Interaktion) —
-    // bewusst kein Fehler-Toast, da das den Bedienfluss stören würde.
-    console.warn('[WARN] Hupe konnte nicht automatisch abgespielt werden (Browser-Autoplay-Sperre).');
-  });
-}
-
-// #endregion

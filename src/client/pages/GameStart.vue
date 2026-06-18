@@ -66,7 +66,12 @@
         <!-- Konfig-Übersicht der gewählten Vorlage -->
         <div v-if="selectedTemplate"
           class="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-base-content/70 bg-base-200 rounded-lg px-4 py-3">
-          <div><span class="text-base-content/40">{{ t('gamestart.periods') }}</span><span class="ml-2 font-medium">{{ selectedTemplate.numPeriods }} × {{ selectedTemplate.periodDuration }} {{ t('common.min') }}</span></div>
+          <div>
+            <span class="text-base-content/40">{{ t('gamestart.periods') }}</span><span class="ml-2 font-medium">{{ selectedTemplate.numPeriods }} × {{ selectedTemplate.periodDuration }} {{ t('common.min') }}</span>
+            <span class="badge badge-ghost badge-xs ml-1" :title="t('gamestart.countDirection')">
+              {{ selectedTemplate.countUp ? '↑ ' + t('gamestart.countUp') : '↓ ' + t('gamestart.countDown') }}
+            </span>
+          </div>
           <div><span class="text-base-content/40">{{ t('gamestart.break') }}</span><span class="ml-2 font-medium">{{ selectedTemplate.breakDuration }} {{ t('common.min') }}</span></div>
           <template v-if="selectedTemplate.hasOvertime">
             <div>

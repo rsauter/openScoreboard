@@ -86,7 +86,6 @@
   "operator.start": "▶ Démarrer",
   "operator.stop": "⏸ Arrêter",
   "operator.nextPhase": "⏭ Phase suivante",
-  "operator.horn": "📢 Corne",
   "operator.reset": "🔄 Réinitialiser",
   "operator.resetConfirm": "Vraiment réinitialiser le match ? Vous serez redirigé vers le démarrage.",
   "operator.score": "Score",
@@ -276,5 +275,8 @@
   "settings.archive.deleteMessage": "Vraiment supprimer le match enregistré \"{home} vs {away}\" ?",
   "settings.archive.deleted": "Match enregistré supprimé.",
   "settings.archive.deleteFailed": "Suppression échouée.",
-  "settings.archive.loadError": "Erreur lors du chargement des matchs enregistrés."
+  "settings.archive.loadError": "Erreur lors du chargement des matchs enregistrés.",
+  "gamestart.countDirection": "Le temps compte",
+  "gamestart.countUp": "vers le haut",
+  "gamestart.countDown": "vers le bas"
 }

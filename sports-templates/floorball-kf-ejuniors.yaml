@@ -1,6 +1,7 @@
 slug: floorball-kf-ejuniors
 name: KF – E-Juniors Matches
 isDefault: false
+countUp: true
 
 periods:
   count: 1
