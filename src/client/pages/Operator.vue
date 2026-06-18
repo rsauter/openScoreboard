@@ -8,30 +8,37 @@
       <div class="card bg-base-100 shadow col-span-2">
         <div class="card-body py-3 px-4">
           <h2 class="text-xs text-base-content/50 uppercase tracking-widest mb-2">{{ t('operator.gametime') }}</h2>
-          <div class="clock-display text-5xl font-bold text-primary text-center">
-            <input v-if="showTimeAdjust"
-              ref="clockInputEl"
-              type="text"
-              :value="clockDisplayValue"
-              @focus="onClockFocus"
-              @blur="onClockBlur"
-              @keydown.enter="onClockEnter"
-              @keydown.escape="onClockEscape"
-              class="input input-ghost text-5xl font-bold text-primary text-center w-40 p-0 border-0 focus:outline-none focus:border-b-2 focus:border-primary"
-            />
-            <span v-else>{{ formattedTime }}</span>
+          <div class="clock-display text-5xl font-bold text-primary text-center flex items-center justify-center gap-3">
+            <button @click="adjustTime(-1)"
+              :title="t('operator.timeCorrection')"
+              :class="showTimeAdjust ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+              class="btn btn-sm btn-ghost border border-base-content/20 text-primary w-9 shrink-0">−</button>
+            <div class="relative h-[1.2em] w-40">
+              <input
+                ref="clockInputEl"
+                type="text"
+                :value="clockDisplayValue"
+                @focus="onClockFocus"
+                @blur="onClockBlur"
+                @keydown.enter="onClockEnter"
+                @keydown.escape="onClockEscape"
+                :class="showTimeAdjust ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                class="text-5xl leading-none font-bold text-primary text-center bg-transparent border-0 outline-none focus:border-b-2 focus:border-primary absolute inset-0 block w-full h-full p-0 m-0"
+                style="line-height: 1.2em;"
+              />
+              <span :class="showTimeAdjust ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+                class="absolute inset-0 flex items-center justify-center leading-none">{{ formattedTime }}</span>
+            </div>
+            <button @click="adjustTime(1)"
+              :title="t('operator.timeCorrection')"
+              :class="showTimeAdjust ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+              class="btn btn-sm btn-ghost border border-base-content/20 text-primary w-9 shrink-0">+</button>
           </div>
           <div class="text-center text-sm text-base-content/50 my-1">{{ phaseText }}</div>
-          <div class="flex items-center justify-center gap-3 my-1" v-if="showTimeAdjust">
-            <span class="text-xs text-base-content/40">{{ t('operator.timeCorrection') }}</span>
-            <button @click="adjustTime(-1)" class="btn btn-sm btn-ghost border border-base-content/20 text-primary">−</button>
-            <button @click="adjustTime(1)"  class="btn btn-sm btn-ghost border border-base-content/20 text-primary">+</button>
-          </div>
           <div class="flex flex-wrap gap-2 justify-center mt-2">
             <button @click="sendCmd('START')"      class="btn btn-success btn-sm">{{ t('operator.start') }}</button>
             <button @click="sendCmd('STOP')"       class="btn btn-error btn-sm">{{ t('operator.stop') }}</button>
             <button @click="sendCmd('NEXT_PHASE')" class="btn btn-warning btn-sm">{{ t('operator.nextPhase') }}</button>
-            <button @click="sendCmd('BUZZER_MANUAL')" class="btn btn-info btn-sm">{{ t('operator.horn') }}</button>
             <button @click="confirmReset"          class="btn btn-ghost btn-sm">{{ t('operator.reset') }}</button>
           </div>
         </div>
@@ -255,7 +262,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { fmt, phaseLabel, unlockHornAudio, playHornSound } from '../shared';
+import { fmt, phaseLabel } from '../shared';
 import type { GameState, ClientCommand, Penalty } from '../../shared/types';
 
 const { t } = useI18n();
@@ -499,30 +506,28 @@ function sendCmd(cmd: ClientCommand['cmd'], extra: Partial<ClientCommand> = {}) 
 }
 
 // ── Buzzer ────────────────────────────────────────────────────────────────────
-// Bei Periodenende, Timeout-Ende und manuellem Trigger: echte Hupen-MP3 (laut,
-// für die ganze Halle gedacht — kommt aus dem Gerät, auf dem diese Seite läuft).
-// horn-long.mp3 für Periodenende/manuell, horn-short.mp3 für Timeout-Ende.
-// Bei Strafzeit-Ende: bewusst nur ein leiser synthetischer Hinweiston für den
-// Operator selbst, keine laute Hupe.
-function playBuzzer(reason: 'period' | 'timeout' | 'penalty' | 'manual') {
-  if (reason === 'penalty') {
-    try {
-      const ctx  = new AudioContext();
-      const gain = ctx.createGain();
-      gain.connect(ctx.destination);
-      const osc = ctx.createOscillator();
-      osc.connect(gain);
+function playBuzzer(reason: 'period' | 'timeout' | 'penalty') {
+  try {
+    const ctx  = new AudioContext();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.connect(gain);
+    if (reason === 'period') {
+      osc.frequency.value = 440; gain.gain.value = 0.4;
+      osc.start(); osc.stop(ctx.currentTime + 1.2);
+    } else if (reason === 'timeout') {
+      osc.frequency.value = 880; gain.gain.value = 0.3;
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } else {
       osc.frequency.value = 660; gain.gain.value = 0.2;
       osc.start(); osc.stop(ctx.currentTime + 0.3);
-    } catch { /* AudioContext not available */ }
-    return;
-  }
-  playHornSound(reason);
+    }
+  } catch { /* AudioContext not available */ }
 }
 
 onMounted(() => {
   connectWebSocket();
-  unlockHornAudio();
 });
 onUnmounted(() => {
   unmounted = true;
