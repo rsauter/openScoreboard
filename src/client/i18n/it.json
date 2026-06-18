@@ -86,6 +86,7 @@
   "operator.start": "▶ Avvia",
   "operator.stop": "⏸ Ferma",
   "operator.nextPhase": "⏭ Fase successiva",
+  "operator.horn": "📢 Sirena",
   "operator.reset": "🔄 Reset",
   "operator.resetConfirm": "Reimpostare davvero la partita? Sarai reindirizzato all'avvio.",
   "operator.score": "Punteggio",

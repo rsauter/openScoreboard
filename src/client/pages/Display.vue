@@ -162,10 +162,16 @@ function connectWebSocket(): void {
     if (message.type === 'STATE' && message.state) {
       state.value = message.state;
     }
+    // Hinweis: BUZZER-Events werden bewusst hier ignoriert. Die Hupe wird
+    // ausschliesslich im Operator-Tab abgespielt — Display läuft typischerweise
+    // als 2. HDMI-Ausgang desselben Notebooks, doppelte/überlappende Wiedergabe
+    // beider Tabs soll vermieden werden.
   });
 }
 
-onMounted(() => { connectWebSocket(); });
+onMounted(() => {
+  connectWebSocket();
+});
 onUnmounted(() => {
   unmounted = true;
   if (reconnectTimer) clearTimeout(reconnectTimer);
