@@ -15,6 +15,12 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <RouterLink
+          to="/help"
+          class="btn btn-ghost btn-sm"
+          :class="{ 'btn-active': route.name === 'Help' }"
+          :title="t('nav.help')"
+        >❓</RouterLink>
+        <RouterLink
           to="/settings"
           class="btn btn-ghost btn-sm"
           :class="{ 'btn-active': route.name === 'Settings' }"
