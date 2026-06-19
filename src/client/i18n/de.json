@@ -1,6 +1,6 @@
 {
   "nav.title": "open SCOREBOARD",
-  "nav.subTitle": "by sluiten-scoreboard.com, Schweiz",
+  "nav.subTitle": "by sluiten-scoreboard.com Schweiz",
   "nav.dashboard": "Dashboard",
   "nav.manager": "Manager",
   "nav.gamestart": "Kickstart",
@@ -279,5 +279,6 @@
   "gamestart.countDirection": "Spielzeit zählt",
   "gamestart.countUp": "aufwärts",
   "gamestart.countDown": "abwärts",
-  "operator.horn": "Horn"
+  "operator.horn": "Horn",
+  "nav.help": "Hilfe"
 }

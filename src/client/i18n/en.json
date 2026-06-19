@@ -279,5 +279,6 @@
   "gamestart.countDirection": "Clock counts",
   "gamestart.countUp": "up",
   "gamestart.countDown": "down",
-  "operator.horn": "Horn"
+  "operator.horn": "Horn",
+  "nav.help": "Help"
 }

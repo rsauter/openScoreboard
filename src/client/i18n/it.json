@@ -279,5 +279,6 @@
   "gamestart.countDirection": "Il tempo conta",
   "gamestart.countUp": "in avanti",
   "gamestart.countDown": "a ritroso",
-  "operator.horn": "Sirena"
+  "operator.horn": "Sirena",
+  "nav.help": "Aiuto"
 }
