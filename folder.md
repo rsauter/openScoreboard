@@ -1,12 +1,12 @@
 # Project Structure: openScoreboard
 
-Generated on: 2026-06-18 19:00:52
+Generated on: 2026-06-19 18:44:06
 
 ## File Tree
 
 - **claude_upload/**
-  - **ARCHITECTURE.md**
   - **.gitignore**
+  - **ARCHITECTURE.md**
   - **package.json**
   - **README.md**
   - **server.ts**
@@ -22,6 +22,11 @@ Generated on: 2026-06-18 19:00:52
   - **sports-templates_handball.yaml**
   - **sports-templates_icehockey-nl-playoff.yaml**
   - **src_client_App.vue**
+  - **src_client_assets_horn-double.mp3**
+  - **src_client_assets_horn-long.mp3**
+  - **src_client_assets_horn-short.mp3**
+  - **src_client_assets_logo_color_onlyhalo.svg**
+  - **src_client_assets_logo_color_standard.svg**
   - **src_client_components_TopNav.vue**
   - **src_client_display.html**
   - **src_client_display.ts**
@@ -47,28 +52,30 @@ Generated on: 2026-06-18 19:00:52
 - **dist/**
   - **public/**
     - **assets/**
-      - **display-DRXbdH63.js**
-      - **en-B87uWbMz.js**
-      - **GameStart-DGjebjwv.js**
+      - **display-BHqPV-DZ.js**
+      - **en-BdcWtbOk.js**
+      - **GameStart-FG2Jkd8y.js**
+      - **Help-DVNwXRbU.js**
       - **horn-long-4vPThREc.mp3**
       - **horn-short-D_W9wQSI.mp3**
       - **logo_color_onlyhalo-B-iyJI9f.svg**
-      - **logo_color_standard-CQPTYun-.svg**
-      - **main-BS0ZAH61.js**
-      - **main-CWClITwk.css**
-      - **Operator-CDFcG2YY.js**
-      - **Settings-CwiH6yG8.js**
-    - **display-DRXbdH63.js**
-    - **en-B87uWbMz.js**
-    - **GameStart-DGjebjwv.js**
+      - **logo_color_standard-C9YIgdyd.svg**
+      - **main-9JRxxBDB.css**
+      - **main-srqMLpHb.js**
+      - **Operator--_OYa1lv.js**
+      - **Settings-Hg4SHily.js**
+    - **display-BHqPV-DZ.js**
+    - **en-BdcWtbOk.js**
+    - **GameStart-FG2Jkd8y.js**
+    - **Help-DVNwXRbU.js**
     - **horn-long-4vPThREc.mp3**
     - **horn-short-D_W9wQSI.mp3**
     - **logo_color_onlyhalo-B-iyJI9f.svg**
-    - **logo_color_standard-CQPTYun-.svg**
-    - **main-BS0ZAH61.js**
-    - **main-CWClITwk.css**
-    - **Operator-CDFcG2YY.js**
-    - **Settings-CwiH6yG8.js**
+    - **logo_color_standard-C9YIgdyd.svg**
+    - **main-9JRxxBDB.css**
+    - **main-srqMLpHb.js**
+    - **Operator--_OYa1lv.js**
+    - **Settings-Hg4SHily.js**
   - **src/**
     - **shared/**
       - **types.js**
@@ -126,6 +133,7 @@ Generated on: 2026-06-18 19:00:52
     - **pages/**
       - **Display.vue**
       - **GameStart.vue**
+      - **Help.vue**
       - **Operator.vue**
       - **Settings.vue**
     - **router/**
@@ -134,4 +142,4 @@ Generated on: 2026-06-18 19:00:52
   - **shared/**
     - **types.ts**
   - **types.ts**
-- **types.ts**
+- **state-archive/**
