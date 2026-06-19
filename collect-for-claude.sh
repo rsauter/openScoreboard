@@ -75,6 +75,13 @@ collect "./src/client/pages/Settings.vue"
 # ── src/shared ──────────────────────────────────────────────────────────────
 collect "./src/shared/types.ts"
 
+# ── src/client/assets ──────────────────────────────────────────────────────────────
+collect "./src/client/assets/horn-short.mp3"
+collect "./src/client/assets/horn-long.mp3"
+collect "./src/client/assets/horn-double.mp3"
+collect "./src/client/assets/logo_color_onlyhalo.svg"
+collect "./src/client/assets/logo_color_standard.svg"
+
 # ── sports-templates ────────────────────────────────────────────────────────
 collect "./sports-templates/floorball-gf-single-nl-finals.yaml"
 collect "./sports-templates/floorball-gf-single-tournament.yaml"
