@@ -279,5 +279,6 @@
   "gamestart.countDirection": "Le temps compte",
   "gamestart.countUp": "vers le haut",
   "gamestart.countDown": "vers le bas",
-  "operator.horn": "Sirène"
+  "operator.horn": "Sirène",
+  "nav.help": "Aide"
 }
