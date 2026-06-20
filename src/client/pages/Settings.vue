@@ -85,9 +85,11 @@
             <h2 class="card-title text-base">{{ t('settings.about') }}</h2>
             <h3 class="card-subtitle text-base">{{ t('nav.title') }}</h3>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <img src="../assets/logo_color_standard.svg" alt="sluiten SCOREBOARD Logo" class="h-26 w-auto" />
+              <a href="https://www.sluiten-scoreboard.com" target="_blank" rel="noopener noreferrer">
+                <img src="../assets/logo_color_standard.svg" alt="sluiten SCOREBOARD Logo" class="h-26 w-auto" />
+              </a>
             </div>
-            <h3 class="card-subtitle text-base">{{ t('nav.subTitle') }}</h3>
+            <h3 class="card-subtitle text-base"><a href="https://www.sluiten-scoreboard.com" target="_blank" rel="noopener noreferrer">{{ t('nav.subTitle') }}</a></h3>
             
           </div>
         </div>
