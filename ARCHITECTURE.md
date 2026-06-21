@@ -107,6 +107,49 @@ newer TypeScript versions).
 - Medium term: deliberate divergence from sluitenScoreboard is expected and
   accepted (no sync effort planned between the two repos)
 
+### Client-side persistence: `localStorage` for all local state
+
+All client-side persistent data is stored in `localStorage` — not
+`sessionStorage`. Rationale: the operator must survive browser restarts
+without re-authenticating; the display on the TV browser must survive page
+reloads without losing its locale setting.
+
+`sessionStorage` is not used anywhere intentionally.
+
+All keys use the `osb.` namespace prefix to avoid collisions with other
+tools on the same device:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `osb.auth.token` | string | Operator auth token (set after PIN login) |
+| `osb.locale` | string | Selected UI language (`de`/`fr`/`it`/`en`) |
+| `osb.theme` | string | Selected DaisyUI theme name |
+
+### Auth: PIN-based operator access
+
+All routes except `/display.html` require a valid auth token. The PIN is
+resolved in this order:
+
+1. `settings.json` in the project root (written when operator changes PIN in Settings)
+2. `OPERATOR_PIN` environment variable
+3. Default `0000` (server logs a warning on startup; Statusbar shows a
+   persistent warning to the operator)
+
+`settings.json` is listed in `.gitignore` — it is never committed and
+survives deployments only as long as the container/process persists. On
+Railway (ephemeral containers), a redeployment resets to ENV or default.
+On a Raspberry Pi (persistent process), it survives indefinitely.
+
+**Flow:**
+- `POST /api/auth/login` with `{ pin }` → returns `{ token }` (a random
+  UUID, stored server-side in memory; no JWT, no crypto dependency)
+- Token sent as `Authorization: Bearer <token>` on all protected REST calls
+- WebSocket: token sent as first message `{ type: "AUTH", token }`; server
+  closes connection if invalid
+- Vue Router navigation guard checks `localStorage.getItem('osb.auth.token')`
+  before entering any route except `/display` (which is a separate HTML file
+  and never guarded)
+
 ## Conventions (shared with the sluitenScoreboard project)
 
 - One Git branch per chat session, named identically
