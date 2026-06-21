@@ -8,4 +8,5 @@ dist/
 *.code-workspace
 .vscode/
 state.json
+settings.json
 state-archive/

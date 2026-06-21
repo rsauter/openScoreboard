@@ -92,7 +92,8 @@ function isValidToken(token: string | undefined): boolean {
 
 function tokenFromRequest(req: express.Request): string | undefined {
   const auth = req.headers['authorization'];
-  if (auth?.startsWith('Bearer ')) return auth.slice(7);
+  const authStr = Array.isArray(auth) ? auth[0] : auth;
+  if (authStr?.startsWith('Bearer ')) return authStr.slice(7);
   return undefined;
 }
 
@@ -439,10 +440,10 @@ app.get('/api/states', requireAuth, (req, res) => {
 
 /** DELETE /api/states/:filename — removes a single archived game state file. */
 app.delete('/api/states/:filename', requireAuth, (req, res) => {
-  const { filename } = req.params;
+  const filename = Array.isArray(req.params.filename) ? req.params.filename[0] : req.params.filename;
 
   // Guard against path traversal — only allow our own naming pattern.
-  if (!/^state_[\w.\-]+\.json$/.test(filename)) {
+  if (!filename || !/^state_[\w.\-]+\.json$/.test(filename)) {
     return res.status(400).json({ error: 'Invalid filename' });
   }
 
