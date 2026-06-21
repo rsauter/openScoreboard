@@ -79,17 +79,49 @@
           </div>
         </div>
 
+        <!-- ─── Operator-PIN ──────────────────────────────────────────────── -->
+        <div class="card bg-base-200 shadow">
+          <div class="card-body gap-4">
+            <h2 class="card-title text-base">{{ t('settings.pin.title') }}</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.currentPin') }}</span></label>
+                <input v-model="pinForm.current" type="password" inputmode="numeric"
+                  :placeholder="t('settings.pin.currentPin')"
+                  class="input input-bordered input-sm w-full" />
+              </div>
+              <div>
+                <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.newPin') }}</span></label>
+                <input v-model="pinForm.next" type="password" inputmode="numeric"
+                  :placeholder="t('settings.pin.newPin')"
+                  class="input input-bordered input-sm w-full" />
+              </div>
+              <div>
+                <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.confirmPin') }}</span></label>
+                <input v-model="pinForm.confirm" type="password" inputmode="numeric"
+                  :placeholder="t('settings.pin.confirmPin')"
+                  class="input input-bordered input-sm w-full" />
+              </div>
+            </div>
+
+            <div v-if="pinError" class="alert alert-error text-sm py-2">{{ pinError }}</div>
+
+            <button class="btn btn-primary btn-sm w-fit" @click="changePin">
+              {{ t('settings.pin.saveBtn') }}
+            </button>
+          </div>
+        </div>
+
         <!-- ─── About ────────────────────────────────────────────────────────── -->
         <div class="card bg-base-200 shadow">
           <div class="card-body gap-4">
             <h2 class="card-title text-base">{{ t('settings.about') }}</h2>
             <h3 class="card-subtitle text-base">{{ t('nav.title') }}</h3>
+            <h3 class="card-subtitle text-base">{{ t('nav.subTitle') }}</h3>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <a href="https://www.sluiten-scoreboard.com" target="_blank" rel="noopener noreferrer">
-                <img src="../assets/logo_color_standard.svg" alt="sluiten SCOREBOARD Logo" class="h-26 w-auto" />
-              </a>
+              <img src="../assets/logo_color_standard.svg" alt="sluiten SCOREBOARD Logo" class="h-26 w-auto" />
             </div>
-            <h3 class="card-subtitle text-base"><a href="https://www.sluiten-scoreboard.com" target="_blank" rel="noopener noreferrer">{{ t('nav.subTitle') }}</a></h3>
             
           </div>
         </div>
@@ -102,11 +134,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { setLocale, type Locale } from '../i18n';
-import { showConfirm, showToast } from '../shared';
+import { showConfirm, showToast, authHeaders, clearToken } from '../shared';
 import type { ArchivedStateInfo } from '../../shared/types';
 
 const { t, locale } = useI18n();
+const router = useRouter();
 
 // ─── Sprache ─────────────────────────────────────────────────────────────────
 const locales = [
@@ -119,6 +153,16 @@ const currentLocale = computed(() => locale.value);
 function switchLocale(code: Locale) { setLocale(code); }
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
+const THEME_KEY     = 'osb.theme';
+const THEME_KEY_OLD = 'theme';
+
+// Migrate legacy key
+const _legacyTheme = localStorage.getItem(THEME_KEY_OLD);
+if (_legacyTheme) {
+  localStorage.setItem(THEME_KEY, _legacyTheme);
+  localStorage.removeItem(THEME_KEY_OLD);
+}
+
 const themes = [
   'light', 'dark', 'cupcake', 'emerald', 'corporate', 'synthwave',
   'retro', 'cyberpunk', 'halloween', 'forest', 'aqua', 'lofi',
@@ -126,12 +170,12 @@ const themes = [
   'coffee', 'winter', 'dim', 'nord', 'sunset',
 ];
 
-const currentTheme = ref(localStorage.getItem('theme') ?? 'dark');
+const currentTheme = ref(localStorage.getItem(THEME_KEY) ?? 'dark');
 
 function setTheme(theme: string) {
   currentTheme.value = theme;
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
+  localStorage.setItem(THEME_KEY, theme);
 }
 
 // Farb-Swatches pro Theme (base / primary / secondary / accent)
@@ -171,7 +215,7 @@ async function loadArchivedStates(): Promise<void> {
   archiveLoading.value = true;
   archiveError.value = false;
   try {
-    const res = await fetch('/api/states');
+    const res = await fetch('/api/states', { headers: authHeaders() });
     if (!res.ok) throw new Error('Request failed');
     archivedStates.value = await res.json();
   } catch {
@@ -198,7 +242,7 @@ async function deleteArchivedState(entry: ArchivedStateInfo): Promise<void> {
   if (!ok) return;
 
   try {
-    const res = await fetch(`/api/states/${encodeURIComponent(entry.filename)}`, { method: 'DELETE' });
+    const res = await fetch(`/api/states/${encodeURIComponent(entry.filename)}`, { method: 'DELETE', headers: authHeaders() });
     if (!res.ok) throw new Error('Request failed');
     archivedStates.value = archivedStates.value.filter(e => e.filename !== entry.filename);
     showToast(t('settings.archive.deleted'), 'success');
@@ -208,4 +252,39 @@ async function deleteArchivedState(entry: ArchivedStateInfo): Promise<void> {
 }
 
 onMounted(loadArchivedStates);
+
+// ─── Operator-PIN ─────────────────────────────────────────────────────────────
+const pinForm  = ref({ current: '', next: '', confirm: '' });
+const pinError = ref('');
+
+async function changePin(): Promise<void> {
+  pinError.value = '';
+  if (pinForm.value.next.length < 4) {
+    pinError.value = t('settings.pin.errorLength');
+    return;
+  }
+  if (pinForm.value.next !== pinForm.value.confirm) {
+    pinError.value = t('settings.pin.errorMatch');
+    return;
+  }
+  try {
+    const res = await fetch('/api/auth/change-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ currentPin: pinForm.value.current, newPin: pinForm.value.next }),
+    });
+    if (res.status === 401) {
+      pinError.value = t('settings.pin.errorCurrent');
+      return;
+    }
+    if (!res.ok) throw new Error('Server error');
+    showToast(t('settings.pin.success'), 'success');
+    clearToken();
+    // Server has revoked all tokens — redirect to login
+    await router.push('/login');
+  } catch {
+    pinError.value = t('settings.pin.errorSave');
+  }
+  pinForm.value = { current: '', next: '', confirm: '' };
+}
 </script>

@@ -280,5 +280,22 @@
   "gamestart.countUp": "in avanti",
   "gamestart.countDown": "a ritroso",
   "operator.horn": "Sirena",
-  "nav.help": "Aiuto"
+  "auth.pinLabel": "PIN Operatore",
+  "auth.pinPlaceholder": "Inserire il PIN",
+  "auth.loginBtn": "Accedi",
+  "auth.wrongPin": "PIN errato.",
+  "auth.title": "Autenticazione richiesta",
+  "auth.subtitle": "Inserire il PIN per continuare.",
+  "auth.defaultPinWarning": "PIN predefinito attivo – cambiarlo nelle Impostazioni.",
+  "settings.pin.title": "PIN Operatore",
+  "settings.pin.currentPin": "PIN attuale",
+  "settings.pin.newPin": "Nuovo PIN",
+  "settings.pin.confirmPin": "Conferma PIN",
+  "settings.pin.saveBtn": "Cambia PIN",
+  "settings.pin.success": "PIN cambiato con successo. Accedere di nuovo.",
+  "settings.pin.errorCurrent": "Il PIN attuale è errato.",
+  "settings.pin.errorMatch": "I nuovi PIN non corrispondono.",
+  "settings.pin.errorLength": "Il PIN deve avere almeno 4 caratteri.",
+  "settings.pin.errorSave": "Errore durante il salvataggio.",
+  "nav.logout": "Disconnettersi"
 }

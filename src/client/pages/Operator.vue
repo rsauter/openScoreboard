@@ -263,12 +263,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { fmt, phaseLabel, displayClockSeconds } from '../shared';
+import { useRouter } from 'vue-router';
+import { fmt, phaseLabel, displayClockSeconds, getToken, clearToken } from '../shared';
 import type { GameState, ClientCommand, Penalty } from '../../shared/types';
 import hornShortUrl from '../assets/horn-short.mp3';
 import hornLongUrl  from '../assets/horn-long.mp3';
 
 const { t } = useI18n();
+const router = useRouter();
 const gameState         = ref<GameState | null>(null);
 const clockDisplayValue = ref('');
 const clockInputEl      = ref<HTMLInputElement | null>(null);
@@ -505,6 +507,8 @@ function connectWebSocket() {
   ws = new WebSocket(wsUrl());
   ws.addEventListener('open', () => {
     reconnectAttempt = 0;
+    // Authenticate this WebSocket connection immediately after open
+    ws!.send(JSON.stringify({ type: 'AUTH', token: getToken() }));
   });
   ws.addEventListener('close', () => {
     scheduleReconnect();
@@ -512,6 +516,12 @@ function connectWebSocket() {
   ws.addEventListener('error', () => { ws?.close(); });
   ws.addEventListener('message', event => {
     const message = JSON.parse(event.data) as { type: string; state?: GameState; reason?: string };
+    if (message.type === 'AUTH_ERROR') {
+      // Token rejected — clear it and redirect to login
+      clearToken();
+      void router.push({ name: 'Login', query: { redirect: '/operator' } });
+      return;
+    }
     if (message.type === 'STATE' && message.state) {
       gameState.value = message.state;
       const types = message.state.penaltyTypes ?? [];

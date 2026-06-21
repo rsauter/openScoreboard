@@ -3,6 +3,7 @@ import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { parse as parseYaml } from 'yaml';
 import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo } from './src/shared/types';
 
@@ -30,6 +31,86 @@ app.use(express.static(staticPath));
 // -------------------------------
 
 app.use(express.json());
+
+// #endregion
+
+// #region ─── Auth ─────────────────────────────────────────────────────────────
+
+const SETTINGS_FILE = path.join(PROJECT_ROOT, 'settings.json');
+const DEFAULT_PIN   = '0000';
+
+interface Settings {
+  pin?: string;
+}
+
+function loadSettings(): Settings {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8')) as Settings;
+    }
+  } catch (e: any) {
+    console.error('[ERROR] Failed to load settings.json:', e.message);
+  }
+  return {};
+}
+
+function saveSettings(s: Settings): void {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+  } catch (e: any) {
+    console.error('[ERROR] Failed to save settings.json:', e.message);
+  }
+}
+
+function resolvePin(): string {
+  const settings = loadSettings();
+  if (settings.pin) return settings.pin;
+  if (process.env.OPERATOR_PIN) return process.env.OPERATOR_PIN;
+  return DEFAULT_PIN;
+}
+
+export function isDefaultPin(): boolean {
+  const settings = loadSettings();
+  if (settings.pin) return false;
+  if (process.env.OPERATOR_PIN) return false;
+  return true;
+}
+
+// In-memory token store (survives process lifetime, resets on restart)
+const validTokens = new Set<string>();
+
+function issueToken(): string {
+  const token = crypto.randomUUID();
+  validTokens.add(token);
+  return token;
+}
+
+function isValidToken(token: string | undefined): boolean {
+  if (!token) return false;
+  return validTokens.has(token);
+}
+
+function tokenFromRequest(req: express.Request): string | undefined {
+  const auth = req.headers['authorization'];
+  if (auth?.startsWith('Bearer ')) return auth.slice(7);
+  return undefined;
+}
+
+function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  if (isValidToken(tokenFromRequest(req))) return next();
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+// Log PIN status on boot (after app is initialized)
+process.nextTick(() => {
+  if (isDefaultPin()) {
+    console.warn('[WARN] No PIN configured — using default PIN "0000". Set OPERATOR_PIN env or change it in Settings.');
+  } else if (process.env.OPERATOR_PIN && !loadSettings().pin) {
+    console.log('[INFO] Using PIN from OPERATOR_PIN environment variable.');
+  } else {
+    console.log('[INFO] Using PIN from settings.json.');
+  }
+});
 
 // #endregion
 
@@ -263,21 +344,63 @@ function unblockWaiting(expiredId: number): void {
 
 /** GET /api/health — simple reachability check (no DB in this open-source build). */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', defaultPin: isDefaultPin() });
+});
+
+/** POST /api/auth/login — verifies PIN and returns a session token. */
+app.post('/api/auth/login', (req, res) => {
+  const { pin } = req.body as { pin?: string };
+  if (!pin || pin !== resolvePin()) {
+    console.warn('[WARN] Failed login attempt with wrong PIN');
+    return res.status(401).json({ error: 'Invalid PIN' });
+  }
+  const token = issueToken();
+  console.log('[INFO] Operator authenticated, token issued');
+  res.json({ token });
+});
+
+/** POST /api/auth/logout — revokes a session token. */
+app.post('/api/auth/logout', (req, res) => {
+  const token = tokenFromRequest(req);
+  if (token) validTokens.delete(token);
+  res.json({ ok: true });
+});
+
+/** POST /api/auth/change-pin — changes the operator PIN and writes settings.json. */
+app.post('/api/auth/change-pin', requireAuth, (req, res) => {
+  const { currentPin, newPin } = req.body as { currentPin?: string; newPin?: string };
+  if (!currentPin || currentPin !== resolvePin()) {
+    return res.status(401).json({ error: 'Current PIN is wrong' });
+  }
+  if (!newPin || newPin.length < 4) {
+    return res.status(400).json({ error: 'New PIN must be at least 4 characters' });
+  }
+  const settings = loadSettings();
+  settings.pin = newPin;
+  saveSettings(settings);
+  // Revoke all existing tokens — everyone must re-authenticate
+  validTokens.clear();
+  console.log('[INFO] PIN changed, all sessions revoked');
+  res.json({ ok: true });
+});
+
+/** GET /api/auth/status — returns whether the default PIN is active (for the Statusbar warning). */
+app.get('/api/auth/status', requireAuth, (_req, res) => {
+  res.json({ defaultPin: isDefaultPin() });
 });
 
 /** GET /api/sport-templates — returns all YAML-loaded templates */
-app.get('/api/sport-templates', (_req, res) => {
+app.get('/api/sport-templates', requireAuth, (_req, res) => {
   res.json(loadedTemplates);
 });
 
 /** GET /api/state — returns current game state (for reconnecting clients) */
-app.get('/api/state', (_req, res) => {
+app.get('/api/state', requireAuth, (_req, res) => {
   res.json(state);
 });
 
 /** GET /api/states — lists archived (finished) game states for the Settings page. */
-app.get('/api/states', (_req, res) => {
+app.get('/api/states', requireAuth, (req, res) => {
   try {
     if (!fs.existsSync(ARCHIVE_DIR)) return res.json([]);
 
@@ -315,7 +438,7 @@ app.get('/api/states', (_req, res) => {
 });
 
 /** DELETE /api/states/:filename — removes a single archived game state file. */
-app.delete('/api/states/:filename', (req, res) => {
+app.delete('/api/states/:filename', requireAuth, (req, res) => {
   const { filename } = req.params;
 
   // Guard against path traversal — only allow our own naming pattern.
@@ -414,11 +537,26 @@ function broadcast(msg: ServerMessage): void {
 }
 
 wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({ type: 'STATE', state }));
+  let authenticated = false;
+
+  // First message must be { type: 'AUTH', token: '...' }
+  // After that, all game commands are accepted on this connection.
   ws.on('message', async (raw) => {
     try {
-      const msg = JSON.parse(raw.toString()) as ClientCommand;
-      await handleCommand(msg);
+      const msg = JSON.parse(raw.toString()) as ClientCommand & { type?: string; token?: string };
+
+      if (!authenticated) {
+        if (msg.type === 'AUTH' && isValidToken(msg.token)) {
+          authenticated = true;
+          ws.send(JSON.stringify({ type: 'STATE', state }));
+        } else {
+          ws.send(JSON.stringify({ type: 'AUTH_ERROR', reason: 'Invalid or missing token' }));
+          ws.close(1008, 'Unauthorized');
+        }
+        return;
+      }
+
+      await handleCommand(msg as ClientCommand);
     } catch (e) {
       console.error('[ERROR] WebSocket message parse error:', e);
     }
