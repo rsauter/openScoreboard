@@ -60,13 +60,40 @@ export function phaseLabel(
   }
 }
 
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export const AUTH_TOKEN_KEY = 'osb.auth.token';
+
+export function getToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+export function authHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Whether the server is running with the default PIN — triggers Statusbar warning.
+export const defaultPinActive = ref(false);
+
 // ─── Server Reachability ───────────────────────────────────────────────────────
 // Polled centrally by StatusBar.vue — no page needs to trigger this itself.
 
 export async function checkServerHealth(): Promise<boolean> {
   try {
     const res = await fetch('/api/health');
-    return res.ok;
+    if (!res.ok) return false;
+    const data = await res.json() as { status: string; defaultPin?: boolean };
+    defaultPinActive.value = data.defaultPin ?? false;
+    return true;
   } catch {
     return false;
   }

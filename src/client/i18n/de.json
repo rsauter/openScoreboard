@@ -1,6 +1,6 @@
 {
   "nav.title": "open SCOREBOARD",
-  "nav.subTitle": "by sluiten-scoreboard.com Schweiz",
+  "nav.subTitle": "by sluiten-scoreboard.com, Schweiz",
   "nav.dashboard": "Dashboard",
   "nav.manager": "Manager",
   "nav.gamestart": "Kickstart",
@@ -280,5 +280,22 @@
   "gamestart.countUp": "aufwärts",
   "gamestart.countDown": "abwärts",
   "operator.horn": "Horn",
-  "nav.help": "Hilfe"
+  "auth.pinLabel": "Operator-PIN",
+  "auth.pinPlaceholder": "PIN eingeben",
+  "auth.loginBtn": "Anmelden",
+  "auth.wrongPin": "Falscher PIN.",
+  "auth.title": "Anmeldung erforderlich",
+  "auth.subtitle": "Bitte PIN eingeben um fortzufahren.",
+  "auth.defaultPinWarning": "Standard-PIN aktiv – bitte in den Einstellungen ändern.",
+  "settings.pin.title": "Operator-PIN",
+  "settings.pin.currentPin": "Aktueller PIN",
+  "settings.pin.newPin": "Neuer PIN",
+  "settings.pin.confirmPin": "PIN bestätigen",
+  "settings.pin.saveBtn": "PIN ändern",
+  "settings.pin.success": "PIN erfolgreich geändert. Bitte neu anmelden.",
+  "settings.pin.errorCurrent": "Aktueller PIN ist falsch.",
+  "settings.pin.errorMatch": "Neue PINs stimmen nicht überein.",
+  "settings.pin.errorLength": "PIN muss mindestens 4 Zeichen lang sein.",
+  "settings.pin.errorSave": "Fehler beim Speichern.",
+  "nav.logout": "Abmelden"
 }

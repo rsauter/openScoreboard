@@ -123,8 +123,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { SportsTemplate } from '../../shared/types';
+import { authHeaders, getToken, clearToken } from '../shared';
+import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
+const router = useRouter();
 
 const templates     = ref<SportsTemplate[]>([]);
 const cfgHome       = ref('');
@@ -144,7 +147,12 @@ function wsUrl() {
 
 async function loadTemplates() {
   try {
-    const res = await fetch('/api/sport-templates');
+    const res = await fetch('/api/sport-templates', { headers: authHeaders() });
+    if (res.status === 401) {
+      clearToken();
+      await router.push({ name: 'Login', query: { redirect: '/' } });
+      return;
+    }
     if (res.ok) {
       templates.value = await res.json();
       if (!cfgTemplateId.value) {
@@ -164,6 +172,8 @@ function startGame() {
 
   const ws = new WebSocket(wsUrl());
   ws.addEventListener('open', () => {
+    // Authenticate first, then send SET_CONFIG
+    ws.send(JSON.stringify({ type: 'AUTH', token: getToken() }));
     ws.send(JSON.stringify({
       cmd: 'SET_CONFIG',
       homeTeam:  cfgHome.value.trim().toUpperCase() || t('common.home'),

@@ -102,13 +102,24 @@ import en from '../i18n/en.json';
 
 const locales: Record<string, Record<string, string>> = { de, fr, it, en };
 
+// Migrate legacy keys to osb.locale
+const _legacyLang   = localStorage.getItem('lang');
+const _legacyLocale = localStorage.getItem('locale');
+if (_legacyLang && !localStorage.getItem('osb.locale')) {
+  localStorage.setItem('osb.locale', _legacyLang);
+  localStorage.removeItem('lang');
+} else if (_legacyLocale && !localStorage.getItem('osb.locale')) {
+  localStorage.setItem('osb.locale', _legacyLocale);
+  localStorage.removeItem('locale');
+}
+
 const messages = ref<Record<string, string>>(
-  locales[localStorage.getItem('lang') ?? 'de'] ?? de
+  locales[localStorage.getItem('osb.locale') ?? 'de'] ?? de
 );
 
 // React to language changes from other tabs / settings page
 window.addEventListener('storage', (e) => {
-  if (e.key === 'lang' && e.newValue) {
+  if (e.key === 'osb.locale' && e.newValue) {
     messages.value = locales[e.newValue] ?? de;
   }
 });

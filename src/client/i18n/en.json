@@ -280,5 +280,22 @@
   "gamestart.countUp": "up",
   "gamestart.countDown": "down",
   "operator.horn": "Horn",
-  "nav.help": "Help"
+  "auth.pinLabel": "Operator PIN",
+  "auth.pinPlaceholder": "Enter PIN",
+  "auth.loginBtn": "Sign in",
+  "auth.wrongPin": "Incorrect PIN.",
+  "auth.title": "Authentication required",
+  "auth.subtitle": "Please enter the PIN to continue.",
+  "auth.defaultPinWarning": "Default PIN active – please change it in Settings.",
+  "settings.pin.title": "Operator PIN",
+  "settings.pin.currentPin": "Current PIN",
+  "settings.pin.newPin": "New PIN",
+  "settings.pin.confirmPin": "Confirm PIN",
+  "settings.pin.saveBtn": "Change PIN",
+  "settings.pin.success": "PIN changed successfully. Please log in again.",
+  "settings.pin.errorCurrent": "Current PIN is incorrect.",
+  "settings.pin.errorMatch": "New PINs do not match.",
+  "settings.pin.errorLength": "PIN must be at least 4 characters.",
+  "settings.pin.errorSave": "Error saving PIN.",
+  "nav.logout": "Log out"
 }

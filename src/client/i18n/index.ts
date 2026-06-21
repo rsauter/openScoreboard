@@ -7,12 +7,21 @@ import en from './en.json';
 const LOCALES = ['de', 'fr', 'it', 'en'] as const;
 export type Locale = typeof LOCALES[number];
 
-const STORAGE_KEY = 'locale';
+// Canonical key (with osb. prefix). Migrates the legacy key on first access.
+const STORAGE_KEY     = 'osb.locale';
+const STORAGE_KEY_OLD = 'locale';
 
 function getInitialLocale(): Locale {
+  // Migrate legacy key if present
+  const legacy = localStorage.getItem(STORAGE_KEY_OLD);
+  if (legacy && LOCALES.includes(legacy as Locale)) {
+    localStorage.setItem(STORAGE_KEY, legacy);
+    localStorage.removeItem(STORAGE_KEY_OLD);
+  }
+
   const stored = localStorage.getItem(STORAGE_KEY) as Locale | null;
   if (stored && LOCALES.includes(stored)) return stored;
-  // Browser-Sprache als Fallback
+  // Browser language as Fallback
   const lang = navigator.language.split('-')[0];
   if (LOCALES.includes(lang as Locale)) return lang as Locale;
   return 'de';
