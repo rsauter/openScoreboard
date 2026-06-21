@@ -1,133 +1,132 @@
 <template>
-      <div class="max-w-2xl mx-auto px-4 py-8 space-y-8">
-        <h1 class="text-2xl font-bold">{{ t('nav.settings') }}</h1>
+  <div class="max-w-2xl mx-auto px-4 py-8 space-y-8">
+    <h1 class="text-2xl font-bold">{{ t('nav.settings') }}</h1>
 
-        <!-- ─── Sprache ──────────────────────────────────────────────────────── -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body gap-4">
-            <h2 class="card-title text-base">{{ t('settings.language') }}</h2>
-            <div class="flex flex-wrap gap-3">
-              <button v-for="lang in locales" :key="lang.code" class="btn btn-lg gap-2"
-                :class="currentLocale === lang.code ? 'btn-primary' : 'btn-ghost border border-base-content/20'"
-                @click="switchLocale(lang.code)">
-                <span class="text-xl">{{ lang.flag }}</span>
-                {{ lang.label }}
-              </button>
-            </div>
-          </div>
+    <!-- ─── Sprache ──────────────────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.language') }}</h2>
+        <div class="flex flex-wrap gap-3">
+          <button v-for="lang in locales" :key="lang.code" class="btn btn-lg gap-2"
+            :class="currentLocale === lang.code ? 'btn-primary' : 'btn-ghost border border-base-content/20'"
+            @click="switchLocale(lang.code)">
+            <span class="text-xl">{{ lang.flag }}</span>
+            {{ lang.label }}
+          </button>
         </div>
-
-        <!-- ─── Theme ────────────────────────────────────────────────────────── -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body gap-4">
-            <h2 class="card-title text-base">{{ t('settings.theme') }}</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <button v-for="theme in themes" :key="theme" class="btn btn-sm justify-start gap-2 font-normal"
-                :class="currentTheme === theme ? 'btn-primary' : 'btn-ghost border border-base-content/20'"
-                @click="setTheme(theme)">
-                <span class="flex gap-0.5 shrink-0">
-                  <span v-for="(color, i) in themeSwatches[theme] ?? []" :key="i"
-                    class="inline-block w-3 h-3 rounded-sm" :style="{ background: color }"></span>
-                </span>
-                {{ theme }}
-                <span v-if="currentTheme === theme" class="ml-auto text-xs opacity-60">✓</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── Beendete Spiele (Archiv) ────────────────────────────────────────── -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body gap-4">
-            <h2 class="card-title text-base">{{ t('settings.archive.title') }}</h2>
-
-            <div v-if="archiveLoading" class="opacity-60 text-sm">
-              {{ t('settings.archive.loading') }}
-            </div>
-
-            <div v-else-if="archiveError" class="alert alert-error text-sm">
-              {{ t('settings.archive.loadError') }}
-            </div>
-
-            <div v-else-if="archivedStates.length === 0" class="opacity-60 text-sm">
-              {{ t('settings.archive.empty') }}
-            </div>
-
-            <template v-else>
-              <div v-if="archivedStates.length > manyThreshold" class="alert alert-warning text-sm">
-                {{ t('settings.archive.many', { count: archivedStates.length }) }}
-              </div>
-
-              <ul class="flex flex-col divide-y divide-base-content/10">
-                <li v-for="entry in archivedStates" :key="entry.filename"
-                  class="flex items-center justify-between gap-3 py-2">
-                  <div class="flex flex-col min-w-0">
-                    <span class="font-medium truncate">
-                      {{ t('settings.archive.score', {
-                        home: entry.homeTeam, away: entry.awayTeam, homeScore:
-                          entry.homeScore, awayScore: entry.awayScore }) }}
-                    </span>
-                    <span class="text-xs opacity-60">{{ formatTimestamp(entry.archivedAt) }}</span>
-                  </div>
-                  <button class="btn btn-ghost btn-sm btn-circle text-error shrink-0" :aria-label="t('common.delete')"
-                    @click="deleteArchivedState(entry)">
-                    ✕
-                  </button>
-                </li>
-              </ul>
-            </template>
-          </div>
-        </div>
-
-        <!-- ─── Operator-PIN ──────────────────────────────────────────────── -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body gap-4">
-            <h2 class="card-title text-base">{{ t('settings.pin.title') }}</h2>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.currentPin') }}</span></label>
-                <input v-model="pinForm.current" type="password" inputmode="numeric"
-                  :placeholder="t('settings.pin.currentPin')"
-                  class="input input-bordered input-sm w-full" />
-              </div>
-              <div>
-                <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.newPin') }}</span></label>
-                <input v-model="pinForm.next" type="password" inputmode="numeric"
-                  :placeholder="t('settings.pin.newPin')"
-                  class="input input-bordered input-sm w-full" />
-              </div>
-              <div>
-                <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.confirmPin') }}</span></label>
-                <input v-model="pinForm.confirm" type="password" inputmode="numeric"
-                  :placeholder="t('settings.pin.confirmPin')"
-                  class="input input-bordered input-sm w-full" />
-              </div>
-            </div>
-
-            <div v-if="pinError" class="alert alert-error text-sm py-2">{{ pinError }}</div>
-
-            <button class="btn btn-primary btn-sm w-fit" @click="changePin">
-              {{ t('settings.pin.saveBtn') }}
-            </button>
-          </div>
-        </div>
-
-        <!-- ─── About ────────────────────────────────────────────────────────── -->
-        <div class="card bg-base-200 shadow">
-          <div class="card-body gap-4">
-            <h2 class="card-title text-base">{{ t('settings.about') }}</h2>
-            <h3 class="card-subtitle text-base">{{ t('nav.title') }}</h3>
-            <h3 class="card-subtitle text-base">{{ t('nav.subTitle') }}</h3>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <img src="../assets/logo_color_standard.svg" alt="sluiten SCOREBOARD Logo" class="h-26 w-auto" />
-            </div>
-            
-          </div>
-        </div>
-
       </div>
-    </template>
+    </div>
+
+    <!-- ─── Theme ────────────────────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.theme') }}</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <button v-for="theme in themes" :key="theme" class="btn btn-sm justify-start gap-2 font-normal"
+            :class="currentTheme === theme ? 'btn-primary' : 'btn-ghost border border-base-content/20'"
+            @click="setTheme(theme)">
+            <span class="flex gap-0.5 shrink-0">
+              <span v-for="(color, i) in themeSwatches[theme] ?? []" :key="i" class="inline-block w-3 h-3 rounded-sm"
+                :style="{ background: color }"></span>
+            </span>
+            {{ theme }}
+            <span v-if="currentTheme === theme" class="ml-auto text-xs opacity-60">✓</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Beendete Spiele (Archiv) ────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.archive.title') }}</h2>
+
+        <div v-if="archiveLoading" class="opacity-60 text-sm">
+          {{ t('settings.archive.loading') }}
+        </div>
+
+        <div v-else-if="archiveError" class="alert alert-error text-sm">
+          {{ t('settings.archive.loadError') }}
+        </div>
+
+        <div v-else-if="archivedStates.length === 0" class="opacity-60 text-sm">
+          {{ t('settings.archive.empty') }}
+        </div>
+
+        <template v-else>
+          <div v-if="archivedStates.length > manyThreshold" class="alert alert-warning text-sm">
+            {{ t('settings.archive.many', { count: archivedStates.length }) }}
+          </div>
+
+          <ul class="flex flex-col divide-y divide-base-content/10">
+            <li v-for="entry in archivedStates" :key="entry.filename"
+              class="flex items-center justify-between gap-3 py-2">
+              <div class="flex flex-col min-w-0">
+                <span class="font-medium truncate">
+                  {{ t('settings.archive.score', {
+                    home: entry.homeTeam, away: entry.awayTeam, homeScore:
+                      entry.homeScore, awayScore: entry.awayScore
+                  }) }}
+                </span>
+                <span class="text-xs opacity-60">{{ formatTimestamp(entry.archivedAt) }}</span>
+              </div>
+              <button class="btn btn-ghost btn-sm btn-circle text-error shrink-0" :aria-label="t('common.delete')"
+                @click="deleteArchivedState(entry)">
+                ✕
+              </button>
+            </li>
+          </ul>
+        </template>
+      </div>
+    </div>
+
+    <!-- ─── Operator-PIN ──────────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.pin.title') }}</h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.currentPin') }}</span></label>
+            <input v-model="pinForm.current" type="password" inputmode="numeric"
+              :placeholder="t('settings.pin.currentPin')" class="input input-bordered input-sm w-full" />
+          </div>
+          <div>
+            <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.newPin') }}</span></label>
+            <input v-model="pinForm.next" type="password" inputmode="numeric" :placeholder="t('settings.pin.newPin')"
+              class="input input-bordered input-sm w-full" />
+          </div>
+          <div>
+            <label class="label py-0"><span class="label-text text-xs">{{ t('settings.pin.confirmPin') }}</span></label>
+            <input v-model="pinForm.confirm" type="password" inputmode="numeric"
+              :placeholder="t('settings.pin.confirmPin')" class="input input-bordered input-sm w-full" />
+          </div>
+        </div>
+
+        <div v-if="pinError" class="alert alert-error text-sm py-2">{{ pinError }}</div>
+
+        <button class="btn btn-primary btn-sm w-fit" @click="changePin">
+          {{ t('settings.pin.saveBtn') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── About ────────────────────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.about') }}</h2>
+        <h3 class="card-subtitle text-base">{{ t('nav.title') }}</h3>
+        <h3 class="card-subtitle text-base">{{ t('nav.subTitle') }}</h3>
+        <a href="https://www.sluiten-scoreboard.com" target="_blank" class="btn btn-ghost btn-sm">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <img src="../assets/logo_color_standard.svg" alt="sluiten SCOREBOARD Logo" class="h-26 w-auto" />
+          </div>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</template>
 
 
 
@@ -153,7 +152,7 @@ const currentLocale = computed(() => locale.value);
 function switchLocale(code: Locale) { setLocale(code); }
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
-const THEME_KEY     = 'osb.theme';
+const THEME_KEY = 'osb.theme';
 const THEME_KEY_OLD = 'theme';
 
 // Migrate legacy key
@@ -254,7 +253,7 @@ async function deleteArchivedState(entry: ArchivedStateInfo): Promise<void> {
 onMounted(loadArchivedStates);
 
 // ─── Operator-PIN ─────────────────────────────────────────────────────────────
-const pinForm  = ref({ current: '', next: '', confirm: '' });
+const pinForm = ref({ current: '', next: '', confirm: '' });
 const pinError = ref('');
 
 async function changePin(): Promise<void> {
