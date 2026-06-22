@@ -1,6 +1,6 @@
 # Project Structure: openScoreboard
 
-Generated on: 2026-06-19 18:44:06
+Generated on: 2026-06-21 14:26:30
 
 ## File Tree
 
@@ -52,30 +52,32 @@ Generated on: 2026-06-19 18:44:06
 - **dist/**
   - **public/**
     - **assets/**
-      - **display-BHqPV-DZ.js**
-      - **en-BdcWtbOk.js**
-      - **GameStart-FG2Jkd8y.js**
-      - **Help-DVNwXRbU.js**
+      - **display-BYD8YebW.js**
+      - **en-CgU_TuCa.js**
+      - **GameStart-thTdxdwS.js**
+      - **Help-DQvVSbOb.js**
       - **horn-long-4vPThREc.mp3**
       - **horn-short-D_W9wQSI.mp3**
+      - **Login-BZfTdwGU.js**
       - **logo_color_onlyhalo-B-iyJI9f.svg**
       - **logo_color_standard-C9YIgdyd.svg**
-      - **main-9JRxxBDB.css**
-      - **main-srqMLpHb.js**
-      - **Operator--_OYa1lv.js**
-      - **Settings-Hg4SHily.js**
-    - **display-BHqPV-DZ.js**
-    - **en-BdcWtbOk.js**
-    - **GameStart-FG2Jkd8y.js**
-    - **Help-DVNwXRbU.js**
+      - **main-CiQnAfSN.css**
+      - **main-DGnRhKUN.js**
+      - **Operator-BSii12Iz.js**
+      - **Settings-DoQh4J_P.js**
+    - **display-BYD8YebW.js**
+    - **en-CgU_TuCa.js**
+    - **GameStart-thTdxdwS.js**
+    - **Help-DQvVSbOb.js**
     - **horn-long-4vPThREc.mp3**
     - **horn-short-D_W9wQSI.mp3**
+    - **Login-BZfTdwGU.js**
     - **logo_color_onlyhalo-B-iyJI9f.svg**
     - **logo_color_standard-C9YIgdyd.svg**
-    - **main-9JRxxBDB.css**
-    - **main-srqMLpHb.js**
-    - **Operator--_OYa1lv.js**
-    - **Settings-Hg4SHily.js**
+    - **main-CiQnAfSN.css**
+    - **main-DGnRhKUN.js**
+    - **Operator-BSii12Iz.js**
+    - **Settings-DoQh4J_P.js**
   - **src/**
     - **shared/**
       - **types.js**
@@ -134,6 +136,7 @@ Generated on: 2026-06-19 18:44:06
       - **Display.vue**
       - **GameStart.vue**
       - **Help.vue**
+      - **Login.vue**
       - **Operator.vue**
       - **Settings.vue**
     - **router/**

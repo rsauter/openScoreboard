@@ -97,4 +97,8 @@ collect "./sports-templates/icehockey-nl-playoff.yaml"
 
 echo ""
 echo "✅ Files gesammelt in $OUT_DIR/"
+
+echo "start generating folder.md"
+echo "# Folder structure of openScoreboard" > "$OUT_DIR/folder.md"
+./generate-folder-md.sh >> "$OUT_DIR/folder.md"
 ls "$OUT_DIR/"
