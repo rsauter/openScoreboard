@@ -8,7 +8,8 @@
     "dev:server": "npx tsx watch server.ts",
     "dev": "concurrently \"npm run dev:server\" \"sleep 3 && npm run dev:client\"",
     "build": "vite build && tsc --project tsconfig.server.json",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "quickstart": "npm run build && npm start"
   },
   "dependencies": {
     "express": "^4.18.2",

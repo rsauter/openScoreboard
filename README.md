@@ -25,15 +25,26 @@ No database. No Docker. Just `npm install && npm start`.
 git clone https://github.com/rsauter/openscoreboard.git
 cd openscoreboard
 npm install
-npm start
+npm run quickstart
 ```
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser.
+
+`npm run quickstart` builds the app and starts the server in one step —
+ideal for trying it out or a first-time setup.
 
 For development (hot reload):
 
 ```bash
 npm run dev
+```
+
+For production use (e.g. on a Raspberry Pi via systemd), build once and
+start separately, so restarts are fast:
+
+```bash
+npm run build
+npm start
 ```
 
 ## Configuration
