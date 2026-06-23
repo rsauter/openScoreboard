@@ -1,6 +1,5 @@
 node_modules/
 .env
-/generated/prisma
 dist/
 /claude_upload
 *.pid
@@ -9,4 +8,5 @@ dist/
 .vscode/
 state.json
 settings.json
-state-archive/public/assets/
+state-archive/
+public/
