@@ -58,7 +58,11 @@ cp .env.example .env
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `PORT` | HTTP port for the server | `3000` |
-| `OPERATOR_PIN` | Fixed operator PIN. If unset, a PIN is generated and stored in `settings.json` on first run | auto-generated |
+| `OPERATOR_PIN` | Fixed operator PIN for the `/operator` view | `0000` if unset |
+
+> **Security note:** If `OPERATOR_PIN` is not set, the default PIN is `0000`.
+> Change it via the environment variable or in **Settings** before using the
+> scoreboard on a network others can access.
 
 ## Sport Templates
 
