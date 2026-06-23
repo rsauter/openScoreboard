@@ -2,29 +2,29 @@ Business Source License 1.1
 
 Parameters
 
-Licensor:             Roger Sauter
-Licensed Work:        openScoreboard
-                      The Licensed Work is (c) 2026 Roger Sauter
-Additional Use Grant: You may use, copy, modify, and run the Licensed Work
-                      for your own internal purposes, including operating
-                      the Licensed Work at sporting events for your own
-                      organization (e.g. a sports club, league, or
-                      federation), even if you charge admission, accept
-                      sponsorship, or otherwise generate revenue from those
-                      events.
+Licensor:               Roger Sauter
+Licensed Work:          openScoreboard
+The Licensed Work is (c) 2026 Roger Sauter
 
-                      You may not offer the Licensed Work, or any product
-                      or service substantially derived from the Licensed
-                      Work, to third parties as a hosted, managed, or
-                      supported product or service (e.g. selling,
-                      sublicensing, or providing the Licensed Work, in
-                      whole or in part, as a paid product, managed rollout,
-                      or support offering to other organizations) without
-                      a separate commercial agreement with the Licensor.
+Additional Use Grant:   You may use, copy, modify, and run the Licensed Work
+                        for your own internal purposes, including operating
+                        the Licensed Work at sporting events for your own
+                        organization (a sports club), even if you charge
+                        admission, accept sponsorship, or otherwise generate
+                        revenue from those events.
 
-Change Date:          2029-06-23
+                        You may not offer the Licensed Work, or any product
+                        or service substantially derived from the Licensed
+                        Work, to third parties as a hosted, managed, or
+                        supported product or service (e.g. selling,
+                        sublicensing, or providing the Licensed Work, in
+                        whole or in part, as a paid product, managed rollout,
+                        or support offering to other organizations) without
+                        a separate commercial agreement with the Licensor.
 
-Change License:       Apache License, Version 2.0
+Change Date:            2029-06-23
+
+Change License:         GNU General Public License v3.0
 
 For information about alternative licensing arrangements for the Licensed
 Work, please contact the Licensor.

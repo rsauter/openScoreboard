@@ -4,9 +4,9 @@ A free, open-source sports scoreboard for floorball, hockey, and other sports.
 No database. No Docker. Just `npm install && npm start`.
 
 > **Free for your club.** Use, modify, and run openScoreboard for your own
-> club, league, or federation — even at ticketed or sponsored events — at no
-> cost. Reselling it as a hosted/managed service to other organizations
-> requires a commercial agreement (see [License](#license)).
+> sports club — even at ticketed or sponsored events — at no cost. Reselling
+> it as a hosted/managed service to other organizations (including
+> federations) requires a commercial agreement (see [License](#license)).
 
 ## Features
 
@@ -149,14 +149,13 @@ openScoreboard is source-available under the
 [Business Source License 1.1](./LICENSE).
 
 In short:
-- You may use, copy, modify, and run this software freely — including for
-  your own club, league, or federation, even if you charge admission or
-  accept sponsorship.
+- You may use, copy, modify, and run this software freely for your own
+  sports club, even if you charge admission or accept sponsorship.
 - You may **not** offer this software (or a derivative of it) as a hosted,
-  managed, or supported product/service to other organizations without a
-  separate commercial agreement.
+  managed, or supported product/service to other organizations — including
+  federations or leagues — without a separate commercial agreement.
 - On **2029-06-23**, this version automatically becomes available under the
-  Apache License 2.0.
+  GNU General Public License v3.0.
 
 Interested in a managed rollout, hardware delivery, or federation-branded
 deployment? Get in touch via [sluiten-scoreboard.com](https://sluiten-scoreboard.com).
