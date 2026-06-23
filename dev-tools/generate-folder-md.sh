@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Configuration
-OUTPUT_FILE="folder.md"
+# OUTPUT_FILE can be overridden via the FOLDER_MD_OUTPUT env var (used by
+# collect-for-claude.sh to point this directly at claude_upload/folder.md).
+# Falls back to ./folder.md when run standalone.
+OUTPUT_FILE="${FOLDER_MD_OUTPUT:-folder.md}"
 # Define ignore patterns as an array
-IGNORE_PATTERNS=("node_modules" ".git" "generated" ".env" "package-lock.json" "yarn.lock" "folder.md" ".DS_Store")
+IGNORE_PATTERNS=("node_modules" ".git" "generated" ".env" "package-lock.json" "yarn.lock" "folder.md" ".DS_Store" "claude_upload" "dev-tools")
 
 # Function to check if a file/folder should be ignored
 should_ignore() {
@@ -50,6 +53,7 @@ walk_dir() {
     done
 
     # Sort arrays
+    local sorted_folders sorted_files
     IFS=$'\n' sorted_folders=($(sort <<<"${folders[*]}")); unset IFS
     IFS=$'\n' sorted_files=($(sort <<<"${files[*]}")); unset IFS
 

@@ -6,99 +6,122 @@
 # Paths are flattened using underscores instead of slashes, e.g.
 # src/client/pages/GameStart.vue → src_client_pages_GameStart.vue
 #
-# Plain bash, no globstar/** — works with the bash 3.2 that ships
-# with macOS as well as any modern bash on Linux/Windows (Git Bash, WSL).
+# DYNAMIC VERSION: instead of a hand-maintained file list, this script
+# scans three zones by file extension, so new files show up automatically:
+#   - repo root         (top-level only, not recursive)
+#   - src/              (recursive — all code/config files)
+#   - sports-templates/ (recursive — all .yaml templates)
+# Only text/code extensions are collected; binary assets (.mp3, .svg, .png, …)
+# are intentionally skipped — not useful for a Claude upload.
+#
+# Lives under ./dev-tools/ but always operates relative to the repo root,
+# regardless of the directory it's invoked from.
+#
+# CROSS-PLATFORM NOTE:
+# Written against bash 3.2 (what macOS ships by default — Apple won't bundle
+# GPLv3 software, so newer bash isn't there unless installed separately via
+# Homebrew). Runs unmodified on macOS, Linux, and Windows (Git Bash / WSL).
+# Avoided on purpose: mapfile, associative arrays, globstar (**), and
+# eval-built find expressions. Uses plain `find ... -print0` piped into a
+# `while read -r -d ''` loop, with extension/exclusion checks done in plain
+# shell via `case` — no bash-4-only features anywhere.
 #
 # Usage:
-#   chmod +x collect-for-claude.sh
-#   ./collect-for-claude.sh
+#   chmod +x dev-tools/collect-for-claude.sh
+#   ./dev-tools/collect-for-claude.sh
 #
-# Result is placed in ./claude_upload/
+# Result is placed in <repo-root>/claude_upload/
 
 set -e
+
+# Resolve repo root: this script lives in <repo-root>/dev-tools, so go up one.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 OUT_DIR="./claude_upload"
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
+# Extensions to collect (text/code only — no binary assets).
+# To track a new extension, just add it here — nothing else to touch.
+EXTENSIONS="ts vue css html json yaml yml md"
+
+# Directory names to always exclude when walking recursively.
+EXCLUDE_DIRS="node_modules .git dist build claude_upload .vite coverage"
+
+# Returns true (0) if $1 (a path) passes through any excluded directory.
+is_excluded() {
+  local path="$1"
+  local dir
+  for dir in $EXCLUDE_DIRS; do
+    case "$path" in
+      */"$dir"/*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# Returns true (0) if $1 (a filename) ends in one of EXTENSIONS (case-insensitive).
+has_wanted_extension() {
+  local lower
+  lower=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+  local ext
+  for ext in $EXTENSIONS; do
+    case "$lower" in
+      *".$ext") return 0 ;;
+    esac
+  done
+  return 1
+}
+
 collect() {
   local src="$1"
-  if [[ ! -f "$src" ]]; then
-    echo "  ! skip (not found): $src"
-    return
-  fi
   local rel="${src#./}"
   local flat="${rel//\//_}"
   cp "$src" "$OUT_DIR/$flat"
   echo "  + $src → $flat"
 }
 
-# ── Root files ──────────────────────────────────────────────────────────────
-collect "./server.ts"
-collect "./package.json"
-collect "./tsconfig.json"
-collect "./tsconfig.server.json"
-collect "./vite.config.ts"
-collect "./README.md"
-collect "./ARCHITECTURE.md"
-collect "./.gitignore"
+echo "── Root files (top-level only) ──────────────────────────────────────────"
+while IFS= read -r -d '' f; do
+  base="${f##*/}"
+  if has_wanted_extension "$base"; then
+    collect "$f"
+  fi
+done < <(find . -maxdepth 1 -type f -print0)
+# .gitignore has no extension matched above — grab it explicitly if present
+[[ -f "./.gitignore" ]] && collect "./.gitignore"
 
-# ── src/client ──────────────────────────────────────────────────────────────
-collect "./src/client/index.ts"
-collect "./src/client/index.html"
-collect "./src/client/shared.ts"
-collect "./src/client/style.css"
-collect "./src/client/display.html"
-collect "./src/client/display.ts"
-collect "./src/client/App.vue"
-collect "./src/client/vite-env.d.ts"
+echo "── src/ (recursive) ─────────────────────────────────────────────────────"
+if [[ -d "./src" ]]; then
+  while IFS= read -r -d '' f; do
+    is_excluded "$f" && continue
+    base="${f##*/}"
+    if has_wanted_extension "$base"; then
+      collect "$f"
+    fi
+  done < <(find ./src -type f -print0)
+fi
 
-# ── src/client/components ──────────────────────────────────────────────────
-collect "./src/client/components/TopNav.vue"
-
-# ── src/client/router ──────────────────────────────────────────────────────
-collect "./src/client/router/index.ts"
-
-# ── src/client/i18n (locales) ──────────────────────────────────────────────
-collect "./src/client/i18n/index.ts"
-collect "./src/client/i18n/en.json"
-collect "./src/client/i18n/de.json"
-collect "./src/client/i18n/fr.json"
-collect "./src/client/i18n/it.json"
-
-# ── src/client/pages ────────────────────────────────────────────────────────
-collect "./src/client/pages/GameStart.vue"
-collect "./src/client/pages/Operator.vue"
-collect "./src/client/pages/Display.vue"
-collect "./src/client/pages/Settings.vue"
-
-# ── src/shared ──────────────────────────────────────────────────────────────
-collect "./src/shared/types.ts"
-
-# ── src/client/assets ──────────────────────────────────────────────────────────────
-collect "./src/client/assets/horn-short.mp3"
-collect "./src/client/assets/horn-long.mp3"
-collect "./src/client/assets/horn-double.mp3"
-collect "./src/client/assets/logo_color_onlyhalo.svg"
-collect "./src/client/assets/logo_color_standard.svg"
-
-# ── sports-templates ────────────────────────────────────────────────────────
-collect "./sports-templates/floorball-gf-single-nl-finals.yaml"
-collect "./sports-templates/floorball-gf-single-tournament.yaml"
-collect "./sports-templates/floorball-gf-single.yaml"
-collect "./sports-templates/floorball-gf-tournament-finals.yaml"
-collect "./sports-templates/floorball-gf-tournament.yaml"
-collect "./sports-templates/floorball-kf-ejuniors.yaml"
-collect "./sports-templates/floorball-kf-single.yaml"
-collect "./sports-templates/floorball-kf-tournament-finals.yaml"
-collect "./sports-templates/floorball-kf-tournament.yaml"
-collect "./sports-templates/handball.yaml"
-collect "./sports-templates/icehockey-nl-playoff.yaml"
+echo "── sports-templates/ (recursive) ────────────────────────────────────────"
+if [[ -d "./sports-templates" ]]; then
+  while IFS= read -r -d '' f; do
+    is_excluded "$f" && continue
+    base="${f##*/}"
+    case "$base" in
+      *.[Yy][Aa][Mm][Ll]|*.[Yy][Mm][Ll]) collect "$f" ;;
+    esac
+  done < <(find ./sports-templates -type f -print0)
+fi
 
 echo ""
 echo "✅ Files gesammelt in $OUT_DIR/"
 
 echo "start generating folder.md"
-echo "# Folder structure of openScoreboard" > "$OUT_DIR/folder.md"
-./generate-folder-md.sh >> "$OUT_DIR/folder.md"
+# Run from REPO_ROOT (current cwd) so the scan covers the whole project,
+# but point its output directly at claude_upload/folder.md via env var —
+# avoids writing a stray folder.md into the repo root and avoids double
+# headers from echo+append.
+FOLDER_MD_OUTPUT="$OUT_DIR/folder.md" "$SCRIPT_DIR/generate-folder-md.sh"
 ls "$OUT_DIR/"

@@ -191,7 +191,7 @@ Der Server speichert den Spielzustand alle 5 Sekunden in \`state.json\`. Bei ein
 
 ---
 
-*open SCOREBOARD ist Open Source (MIT) – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
+*open SCOREBOARD ist Source-Available unter der Business Source License 1.1 – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
 `;
 
 // ─── English ──────────────────────────────────────────────────────────────
@@ -364,7 +364,7 @@ The server saves the game state to \`state.json\` every 5 seconds. On restart, a
 
 ---
 
-*open SCOREBOARD is Open Source (MIT) – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
+*open SCOREBOARD is source-available under the Business Source License 1.1 – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
 `;
 
 // ─── Français ─────────────────────────────────────────────────────────────
@@ -537,7 +537,7 @@ Le serveur enregistre l'état du match toutes les 5 secondes dans \`state.json\`
 
 ---
 
-*open SCOREBOARD est open source (MIT) – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
+*open SCOREBOARD est disponible en source ouverte sous la Business Source License 1.1 – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
 `;
 
 // ─── Italiano ─────────────────────────────────────────────────────────────
@@ -710,7 +710,7 @@ Il server salva lo stato della partita in \`state.json\` ogni 5 secondi. Al riav
 
 ---
 
-*open SCOREBOARD è Open Source (MIT) – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
+*open SCOREBOARD è source-available sotto la Business Source License 1.1 – [github.com/rsauter/openscoreboard](https://github.com/rsauter/openscoreboard)*
 `;
 
 const markdownByLocale: Record<string, string> = {
