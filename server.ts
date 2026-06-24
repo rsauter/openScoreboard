@@ -13,6 +13,9 @@ import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, C
 // In prod mode (dist) we go up one level to the project root.
 const PROJECT_ROOT = __dirname.endsWith(path.sep + 'dist') ? path.join(__dirname, '..') : __dirname;
 
+// App version — single source of truth is package.json (no duplicate version string in code).
+const APP_VERSION: string = require(path.join(PROJECT_ROOT, 'package.json')).version;
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
@@ -345,7 +348,7 @@ function unblockWaiting(expiredId: number): void {
 
 /** GET /api/health — simple reachability check (no DB in this open-source build). */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', defaultPin: isDefaultPin() });
+  res.json({ status: 'ok', defaultPin: isDefaultPin(), version: APP_VERSION });
 });
 
 /** POST /api/auth/login — verifies PIN and returns a session token. */

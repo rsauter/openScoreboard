@@ -1,13 +1,13 @@
 <template>
   <div class="fixed bottom-0 left-0 right-0 z-50 bg-base-200 border-t border-base-300 py-1 px-4 text-xs text-center text-base-content/60">
-    {{ statusText }}
+    {{ statusText }}<span v-if="appVersion"> · v{{ appVersion }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { checkServerHealth, statusText } from '../shared';
+import { checkServerHealth, statusText, appVersion } from '../shared';
 
 const { t } = useI18n();
 
