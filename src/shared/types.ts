@@ -33,7 +33,7 @@ export interface PenaltyType {
   chainSeconds?:   number;  // For 2+2: below this remaining time the penalty can no longer be cleared by goal
 }
 
-/** The type of companion penalty accompanying a main penalty (Begleitstrafe). */
+/** The type of companion penalty accompanying a main penalty. */
 export type CompanionType = '2' | '5' | '2+2';
 
 /** Global penalty engine settings, defined per SportsTemplate. */
@@ -161,7 +161,8 @@ export type ClientCommand =
   | { cmd: 'START' }
   | { cmd: 'STOP' }
   | { cmd: 'NEXT_PHASE' }
-  | { cmd: 'RESET' }
+  | { cmd: 'ABORT_GAME' }
+  | { cmd: 'RESTART_GAME' }
   | { cmd: 'GOAL_HOME' }
   | { cmd: 'GOAL_AWAY' }
   | { cmd: 'UNDO_HOME' }

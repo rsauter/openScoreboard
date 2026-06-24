@@ -9,18 +9,18 @@ import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, C
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
 
-// PROJECT_ROOT wird weiterhin für Daten-Dateien (state.json, templates) genutzt.
-// Im Prod-Modus (dist) gehen wir einen Schritt hoch ins Root.
+// PROJECT_ROOT is still used for data files (state.json, templates).
+// In prod mode (dist) we go up one level to the project root.
 const PROJECT_ROOT = __dirname.endsWith(path.sep + 'dist') ? path.join(__dirname, '..') : __dirname;
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// --- FIX FÜR STATISCHE DATEIEN ---
-// Der Build legt Dateien in 'dist/public' ab.
-// Wenn __dirname = /app/dist (Prod), dann ist der Pfad: /app/dist/public
-// Wenn __dirname = /app/src (Dev), dann ist der Pfad: /app/dist/public (für lokalen Build-Test)
+// --- FIX FOR STATIC FILES ---
+// The build places files in 'dist/public'.
+// If __dirname = /app/dist (prod), the path is: /app/dist/public
+// If __dirname = /app/src (dev), the path is: /app/dist/public (for local build testing)
 const isProd = __dirname.endsWith(path.sep + 'dist');
 const staticPath = isProd 
   ? path.join(__dirname, 'public') 
@@ -289,7 +289,7 @@ function archiveStateFile(): void {
   }
 }
 
-/** Removes state.json without archiving (used on RESET before a game has produced a result). */
+/** Removes state.json without archiving (used on ABORT_GAME before a game has produced a result). */
 function discardStateFile(): void {
   try { if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE); } catch { }
 }
@@ -462,7 +462,7 @@ app.delete('/api/states/:filename', requireAuth, (req, res) => {
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.endsWith('.html')) return next();
   
-  // Nutzt denselben staticPath Logik oder explizit den Pfad zur index.html
+  // Uses the same staticPath logic, but resolves the path to index.html explicitly
   const indexHtmlPath = isProd 
     ? path.join(__dirname, 'public', 'index.html')
     : path.join(__dirname, '../dist/public', 'index.html');
@@ -666,6 +666,16 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
         awayColor:       msg.awayColor || '#ff6b6b',
         homeAbbr:        msg.homeAbbr  || abbr(msg.homeTeam),
         awayAbbr:        msg.awayAbbr  || abbr(msg.awayTeam),
+        // Move straight into period 1 (stopped) so the Operator UI switches out
+        // of the GameStart form immediately. Previously this relied on the
+        // client hard-redirecting to /operator after SET_CONFIG and the
+        // separate START command calling advancePhase() — now that the
+        // Operator view is driven directly by `phase` over the WebSocket
+        // (no redirect/reload), SET_CONFIG itself must make this transition.
+        phase:           'period',
+        currentPeriod:   1,
+        running:         false,
+        lastTick:        null,
       };
       break;
     }
@@ -687,12 +697,48 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
       advancePhase();
       break;
 
-    case 'RESET':
+    case 'ABORT_GAME':
+      // Terminates the game entirely — back to GameStart, template/teams cleared.
       // Preserve the result if a game was actually in progress; otherwise just discard.
       if (state.phase !== 'pregame') archiveStateFile();
       else discardStateFile();
       state = createInitialState();
       break;
+
+    case 'RESTART_GAME': {
+      // Restarts with the SAME teams/template/config and jumps straight into
+      // period 1 — stays in the live Operator view, no GameStart form shown.
+      // Archive the previous result first if a game was actually in progress.
+      if (state.phase !== 'pregame') archiveStateFile();
+      state = {
+        ...createInitialState(),
+        numPeriods:      state.numPeriods,
+        periodDuration:  state.periodDuration,
+        breakDuration:   state.breakDuration,
+        hasOvertime:     state.hasOvertime,
+        numOtPeriods:    state.numOtPeriods,
+        otDuration:      state.otDuration,
+        otSuddenDeath:   state.otSuddenDeath,
+        otBreakDuration: state.otBreakDuration,
+        hasShootout:     state.hasShootout,
+        soBreakDuration: state.soBreakDuration,
+        countUp:         state.countUp,
+        penaltyTypes:    state.penaltyTypes,
+        penaltySettings: state.penaltySettings,
+        homeTeam:        state.homeTeam,
+        awayTeam:        state.awayTeam,
+        homeColor:       state.homeColor,
+        awayColor:       state.awayColor,
+        homeAbbr:        state.homeAbbr,
+        awayAbbr:        state.awayAbbr,
+        phase:           'period',
+        currentPeriod:   1,
+        timeRemaining:   state.periodDuration,
+        running:         false,
+        lastTick:        null,
+      };
+      break;
+    }
 
     case 'GOAL_HOME': state.homeScore++; break;
     case 'GOAL_AWAY': state.awayScore++; break;

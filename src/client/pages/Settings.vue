@@ -169,7 +169,7 @@ const themes = [
   'coffee', 'winter', 'dim', 'nord', 'sunset',
 ];
 
-const currentTheme = ref(localStorage.getItem(THEME_KEY) ?? 'dark');
+const currentTheme = ref(localStorage.getItem(THEME_KEY) ?? 'corporate');
 
 function setTheme(theme: string) {
   currentTheme.value = theme;

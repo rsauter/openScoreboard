@@ -17,6 +17,15 @@ const COUNT_UP_ELIGIBLE_PHASES = new Set(['period', 'overtime']);
  * - Breaks (pregame, break, ot_break, so_break) always display remaining time.
  * - period/overtime display remaining time, unless countUp is set, in which case
  *   they display elapsed time (duration - timeRemaining), counting up from 0.
+ *
+ * For countDown, fmt()'s Math.ceil is the right rounding direction: with 0.3s
+ * left it still shows "0:01", not "0:00", so the clock never claims the period
+ * is over before the buzzer actually fires. For countUp, naively passing
+ * (duration - timeRemaining) into fmt() inverts that: with timeRemaining=0.3s
+ * the raw value is e.g. 1199.7, which Math.ceil rounds *up* to 1200 — showing
+ * "20:00" up to ~1s before the period actually ends and the buzzer sounds.
+ * Flooring here first removes that inversion, so the displayed minute only
+ * advances once timeRemaining has truly reached 0.
  */
 export function displayClockSeconds(
   s: {
@@ -29,7 +38,7 @@ export function displayClockSeconds(
 ): number {
   if (!s.countUp || !COUNT_UP_ELIGIBLE_PHASES.has(s.phase)) return s.timeRemaining;
   const duration = s.phase === 'overtime' ? s.otDuration : s.periodDuration;
-  return Math.max(0, duration - s.timeRemaining);
+  return Math.max(0, Math.floor(duration - s.timeRemaining));
 }
 
 export function phaseLabel(
@@ -83,6 +92,13 @@ export function authHeaders(): Record<string, string> {
 
 // Whether the server is running with the default PIN — triggers Statusbar warning.
 export const defaultPinActive = ref(false);
+
+// ─── Game Phase (shared with TopNav) ───────────────────────────────────────────
+// Set by Operator.vue from the live WebSocket state — lets TopNav switch its
+// single nav entry between "GameStart" and "Operator" without opening a second
+// connection just to know whether a game is currently running.
+// `null` = not yet known (treated as pregame, i.e. show "GameStart").
+export const currentPhase = ref<string | null>(null);
 
 // ─── Server Reachability ───────────────────────────────────────────────────────
 // Polled centrally by StatusBar.vue — no page needs to trigger this itself.

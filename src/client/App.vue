@@ -62,7 +62,11 @@ function toastAlertClass(type: 'success' | 'error' | 'warning' | 'info') {
 }
 
 onMounted(() => {
-  const saved = localStorage.getItem('theme') ?? 'dark';
+  // Reads the same 'osb.theme' key that Settings.vue writes to (and migrates
+  // the legacy unprefixed 'theme' key from, if present) — keeps both in sync
+  // so the right theme applies immediately on every load, not just after a
+  // visit to Settings.
+  const saved = localStorage.getItem('osb.theme') ?? localStorage.getItem('theme') ?? 'corporate';
   document.documentElement.setAttribute('data-theme', saved);
 });
 </script>
