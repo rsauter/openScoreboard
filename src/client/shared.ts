@@ -93,6 +93,9 @@ export function authHeaders(): Record<string, string> {
 // Whether the server is running with the default PIN — triggers Statusbar warning.
 export const defaultPinActive = ref(false);
 
+// App version, as reported by the server's /api/health (single source of truth: package.json).
+export const appVersion = ref<string | null>(null);
+
 // ─── Game Phase (shared with TopNav) ───────────────────────────────────────────
 // Set by Operator.vue from the live WebSocket state — lets TopNav switch its
 // single nav entry between "GameStart" and "Operator" without opening a second
@@ -107,8 +110,9 @@ export async function checkServerHealth(): Promise<boolean> {
   try {
     const res = await fetch('/api/health');
     if (!res.ok) return false;
-    const data = await res.json() as { status: string; defaultPin?: boolean };
+    const data = await res.json() as { status: string; defaultPin?: boolean; version?: string };
     defaultPinActive.value = data.defaultPin ?? false;
+    appVersion.value = data.version ?? null;
     return true;
   } catch {
     return false;
