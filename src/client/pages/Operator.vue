@@ -1,10 +1,65 @@
 <template>
-  <div class="bg-base-300 p-4 min-h-screen">
+  <!-- ── No game active: GameStart form ── -->
+  <GameStart v-if="isPregame" @start="handleStart" />
+
+  <!-- ── Game active: Live Operator ── -->
+  <div v-else class="bg-base-300 p-4 min-h-screen">
     <h1 class="text-2xl font-bold text-primary text-center mb-3">⏱ {{ t('operator.title') }}</h1>
     
     <div class="grid grid-cols-2 gap-3">
 
-      <!-- ── Spielzeit ── -->
+      <!-- ── Sports template (collapsible, read-only overview) ── -->
+      <details class="card bg-base-100 shadow col-span-2 group" open>
+        <summary class="card-body py-3 px-4 cursor-pointer list-none flex-row items-center justify-between">
+          <h2 class="text-xs text-base-content/50 uppercase tracking-widest">
+            {{ t('gamestart.template') }}
+          </h2>
+          <span class="text-base-content/40 text-xs transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div class="card-body pt-0 pb-3 px-4 -mt-2">
+          <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-base-content/70 bg-base-200 rounded-lg px-4 py-3">
+            <div>
+              <span class="text-base-content/40">{{ t('gamestart.periods') }}</span><span class="ml-2 font-medium">{{ gameState?.numPeriods }} × {{ Math.round((gameState?.periodDuration ?? 0) / 60) }} {{ t('common.min') }}</span>
+              <span class="badge badge-ghost badge-xs ml-1">
+                {{ gameState?.countUp ? '↑ ' + t('gamestart.countUp') : '↓ ' + t('gamestart.countDown') }}
+              </span>
+            </div>
+            <div><span class="text-base-content/40">{{ t('gamestart.break') }}</span><span class="ml-2 font-medium">{{ Math.round((gameState?.breakDuration ?? 0) / 60) }} {{ t('common.min') }}</span></div>
+            <template v-if="gameState?.hasOvertime">
+              <div>
+                <span class="text-base-content/40">{{ t('gamestart.overtime') }}</span>
+                <span class="ml-2 font-medium">
+                  {{ gameState?.numOtPeriods === null ? '∞' : gameState?.numOtPeriods }} × {{ Math.round((gameState?.otDuration ?? 0) / 60) }} {{ t('common.min') }}
+                </span>
+                <span v-if="gameState?.otSuddenDeath" class="badge badge-warning badge-soft badge-xs ml-1">SD</span>
+              </div>
+              <div><span class="text-base-content/40">{{ t('gamestart.otBreak') }}</span><span class="ml-2 font-medium">{{ Math.round((gameState?.otBreakDuration ?? 0) / 60) }} {{ t('common.min') }}</span></div>
+            </template>
+            <template v-else>
+              <div><span class="text-base-content/40">{{ t('gamestart.overtime') }}</span><span class="ml-2 text-base-content/30">–</span></div>
+              <div></div>
+            </template>
+            <div>
+              <span class="text-base-content/40">{{ t('gamestart.shootout') }}</span>
+              <span v-if="gameState?.hasShootout" class="ml-2 font-medium">✓ ({{ t('gamestart.shootoutPause', { n: Math.round((gameState?.soBreakDuration ?? 0) / 60) }) }})</span>
+              <span v-else class="ml-2 text-base-content/30">–</span>
+            </div>
+            <div class="col-span-2 mt-1 pt-2 border-t border-base-content/10">
+              <span class="text-base-content/40">{{ t('gamestart.penalties') }}</span>
+              <span v-if="!gameState?.penaltyTypes?.length" class="ml-2 text-base-content/30">–</span>
+              <span v-else class="ml-2 inline-flex flex-wrap gap-1">
+                <span v-for="pt in gameState?.penaltyTypes" :key="pt.id"
+                  class="badge badge-xs"
+                  :class="pt.displayMode === 'slot' ? 'badge-primary badge-outline' : 'badge-warning badge-outline'">
+                  {{ pt.label }}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ── Game time ── -->
       <div class="card bg-base-100 shadow col-span-2">
         <div class="card-body py-3 px-4">
           <h2 class="text-xs text-base-content/50 uppercase tracking-widest mb-2">{{ t('operator.gametime') }}</h2>
@@ -40,12 +95,13 @@
             <button @click="sendCmd('STOP')"       class="btn btn-error btn-sm">{{ t('operator.stop') }}</button>
             <button @click="sendCmd('NEXT_PHASE')" class="btn btn-warning btn-sm">{{ t('operator.nextPhase') }}</button>
             <button @click="sendCmd('BUZZER_MANUAL')" class="btn btn-info btn-sm">📢 {{ t('operator.horn') }}</button>
-            <button @click="confirmReset"          class="btn btn-ghost btn-sm">{{ t('operator.reset') }}</button>
+            <button @click="confirmRestart" class="btn btn-ghost btn-sm">{{ t('operator.restart') }}</button>
+            <button @click="confirmAbort"  class="btn btn-ghost btn-sm text-error">{{ t('operator.abort') }}</button>
           </div>
         </div>
       </div>
 
-      <!-- ── Spielstand ── -->
+      <!-- ── Score ── -->
       <div class="card bg-base-100 shadow">
         <div class="card-body py-3 px-4">
           <h2 class="text-xs text-base-content/50 uppercase tracking-widest mb-3">{{ t('operator.score') }}</h2>
@@ -93,12 +149,12 @@
         </div>
       </div>
 
-      <!-- ── Strafen ── -->
+      <!-- ── Penalties ── -->
       <div class="card bg-base-100 shadow col-span-2">
         <div class="card-body py-3 px-4">
           <h2 class="text-xs text-base-content/50 uppercase tracking-widest mb-3">{{ t('operator.penalties') }}</h2>
 
-          <!-- Strafe erfassen -->
+          <!-- Record penalty -->
           <div class="grid grid-cols-2 gap-2 mb-3 sm:grid-cols-4">
             <div>
               <label class="label py-0"><span class="label-text text-xs">{{ t('operator.penaltyTeam') }}</span></label>
@@ -118,14 +174,14 @@
                 <option v-for="pt in availablePenaltyTypes" :key="pt.id" :value="pt.id">{{ pt.label }}</option>
               </select>
             </div>
-            <!-- Begleitung: nur bei Badge-Strafen -->
+            <!-- Companion: only for badge penalties -->
             <div v-if="isBadgePenalty" class="flex items-center gap-2 pt-5">
               <input type="checkbox" v-model="penalty.hasCompanion" class="checkbox checkbox-sm checkbox-warning">
               <span class="text-sm">{{ t('operator.penaltyCompanion') }}</span>
             </div>
           </div>
 
-          <!-- Companion-Details: erscheinen wenn Badge + hasCompanion -->
+          <!-- Companion details: shown when badge + hasCompanion -->
           <div v-if="isBadgePenalty && penalty.hasCompanion"
             class="grid grid-cols-2 gap-2 mb-3 bg-warning/10 border border-warning/20 rounded p-2">
             <div>
@@ -143,21 +199,21 @@
             </div>
           </div>
 
-          <!-- Hinweis wenn Slots voll und Queue aktiv -->
+          <!-- Warning when slots are full and queue is active -->
           <div v-if="slotWarning" class="alert alert-warning py-1 px-3 text-xs mb-2">
             ⚠️ {{ slotWarning }}
           </div>
 
           <button @click="addPenalty" class="btn btn-error btn-sm mb-4">{{ t('operator.addPenalty') }}</button>
 
-          <!-- Aktive Strafen: Slots + Badges pro Team -->
+          <!-- Active penalties: slots + badges per team -->
           <div class="grid grid-cols-2 gap-4">
             <div v-for="team in (['home', 'away'] as const)" :key="team">
               <div class="text-xs font-semibold text-base-content/60 mb-1 uppercase">
                 {{ team === 'home' ? gameState?.homeTeam : gameState?.awayTeam }}
               </div>
 
-              <!-- Slot-Strafen (laufend) -->
+              <!-- Slot penalties (running) -->
               <div class="space-y-1 mb-2">
                 <div v-if="runningSlots(team).length === 0" class="text-xs text-base-content/30 italic">{{ t('operator.noPenalties') }}</div>
                 <div v-for="pen in runningSlots(team)" :key="pen.id"
@@ -185,7 +241,7 @@
                 </div>
               </div>
 
-              <!-- Badge-Strafen (10min etc.) -->
+              <!-- Badge penalties (10min etc.) -->
               <div class="space-y-1 mb-2">
                 <div v-for="pen in runningBadges(team)" :key="pen.id"
                   class="flex items-center gap-2 bg-warning/10 border border-warning/30 rounded px-2 py-1 text-xs">
@@ -196,7 +252,7 @@
                 </div>
               </div>
 
-              <!-- Waiting-Strafen (Badge wartet auf Slot-Ablauf) -->
+              <!-- Waiting penalties (badge waiting for slot to expire) -->
               <div v-if="waitingPenalties(team).length > 0" class="space-y-1 mb-2">
                 <div class="text-xs text-base-content/40 mb-0.5">{{ t('operator.waiting2min') }}</div>
                 <div v-for="pen in waitingPenalties(team)" :key="pen.id"
@@ -264,8 +320,9 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { fmt, phaseLabel, displayClockSeconds, getToken, clearToken } from '../shared';
+import { fmt, phaseLabel, displayClockSeconds, getToken, clearToken, showConfirm, currentPhase } from '../shared';
 import type { GameState, ClientCommand, Penalty } from '../../shared/types';
+import GameStart from './GameStart.vue';
 import hornShortUrl from '../assets/horn-short.mp3';
 import hornLongUrl  from '../assets/horn-long.mp3';
 
@@ -275,6 +332,11 @@ const gameState         = ref<GameState | null>(null);
 const clockDisplayValue = ref('');
 const clockInputEl      = ref<HTMLInputElement | null>(null);
 let ws: WebSocket | null = null;
+
+// Whether to show the GameStart form instead of the live operator view.
+// `null` (not yet connected) is treated as pregame so the GameStart form is
+// shown by default rather than flashing the live layout with empty data.
+const isPregame = computed(() => gameState.value === null || gameState.value.phase === 'pregame');
 
 // Penalty-Eingabe-State
 const penalty = ref({
@@ -347,7 +409,7 @@ const slotWarning = computed(() => {
   return '';
 });
 
-// Penalty-Listen nach Team und Status
+// Penalty lists by team and status
 function runningSlots(team: 'home' | 'away'): Penalty[] {
   return (gameState.value?.penalties ?? [])
     .filter(p => p.team === team && p.status === 'running' && p.displayMode === 'slot')
@@ -479,10 +541,36 @@ function adjustTime(delta: number) {
   sendCmd('ADJUST_TIME', { delta: serverDelta } as any);
 }
 
-function confirmReset() {
-  if (!confirm(t('operator.resetConfirm'))) return;
-  sendCmd('RESET');
-  setTimeout(() => { window.location.href = '/gamestart'; }, 300);
+function handleStart(payload: {
+  homeTeam: string; awayTeam: string; homeColor: string; awayColor: string; templateSlug: string;
+  config: {
+    numPeriods: number; periodDuration: number; breakDuration: number;
+    hasOvertime: boolean; numOtPeriods: number | null; otDuration: number;
+    otSuddenDeath: boolean; otBreakDuration: number; hasShootout: boolean; soBreakDuration: number;
+  };
+}) {
+  sendCmd('SET_CONFIG', payload as any);
+}
+
+async function confirmRestart() {
+  const ok = await showConfirm({
+    title:       t('operator.restartConfirmTitle'),
+    message:     t('operator.restartConfirm'),
+    confirmText: t('operator.restart'),
+  });
+  if (!ok) return;
+  sendCmd('RESTART_GAME');
+}
+
+async function confirmAbort() {
+  const ok = await showConfirm({
+    title:       t('operator.abortConfirmTitle'),
+    message:     t('operator.abortConfirm'),
+    confirmText: t('operator.abort'),
+    danger:      true,
+  });
+  if (!ok) return;
+  sendCmd('ABORT_GAME');
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
@@ -515,7 +603,11 @@ function connectWebSocket() {
   });
   ws.addEventListener('error', () => { ws?.close(); });
   ws.addEventListener('message', event => {
-    const message = JSON.parse(event.data) as { type: string; state?: GameState; reason?: string };
+    const message = JSON.parse(event.data) as {
+      type: string;
+      state?: GameState;
+      reason?: 'period' | 'timeout' | 'penalty' | 'manual';
+    };
     if (message.type === 'AUTH_ERROR') {
       // Token rejected — clear it and redirect to login
       clearToken();
@@ -524,6 +616,7 @@ function connectWebSocket() {
     }
     if (message.type === 'STATE' && message.state) {
       gameState.value = message.state;
+      currentPhase.value = message.state.phase;
       const types = message.state.penaltyTypes ?? [];
       if (types.length && (!penalty.value.typeId || !types.find(pt => pt.id === penalty.value.typeId))) {
         penalty.value.typeId = types[0].id;

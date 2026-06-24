@@ -10,7 +10,7 @@
         <h2 class="card-title text-xs text-base-content/50 uppercase tracking-widest mb-3">{{ t('gamestart.teams') }}</h2>
         <div class="grid grid-cols-[1fr_40px_1fr] gap-3 items-end">
 
-          <!-- Heim -->
+          <!-- Home -->
           <div>
             <label class="label"><span class="label-text text-xs text-base-content/60">{{ t('gamestart.homeTeam') }}</span></label>
             <div class="flex gap-2 items-center">
@@ -25,7 +25,7 @@
 
           <div class="text-center text-base-content/40 font-bold pb-2">vs</div>
 
-          <!-- Gast -->
+          <!-- Away -->
           <div>
             <label class="label"><span class="label-text text-xs text-base-content/60">{{ t('gamestart.awayTeam') }}</span></label>
             <div class="flex gap-2 items-center">
@@ -39,7 +39,7 @@
           </div>
         </div>
 
-        <!-- Farbvorschau -->
+        <!-- Color preview -->
         <div class="flex gap-3 mt-3">
           <div class="flex items-center gap-2 text-xs text-base-content/50">
             <span class="inline-block w-3 h-3 rounded-full" :style="{ background: cfgHomeColor }"></span>
@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <!-- Sport-Vorlage -->
+    <!-- Sports template -->
     <div class="card bg-base-100 shadow-md w-full max-w-2xl mb-4">
       <div class="card-body">
         <h2 class="card-title text-xs text-base-content/50 uppercase tracking-widest mb-3">{{ t('gamestart.template') }}</h2>
@@ -63,7 +63,7 @@
           <option v-for="tmpl in templates" :key="tmpl.id" :value="tmpl.id">{{ tmpl.name }}</option>
         </select>
 
-        <!-- Konfig-Übersicht der gewählten Vorlage -->
+        <!-- Config overview for the selected template -->
         <div v-if="selectedTemplate"
           class="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-base-content/70 bg-base-200 rounded-lg px-4 py-3">
           <div>
@@ -92,7 +92,7 @@
             <span v-if="selectedTemplate.hasShootout" class="ml-2 font-medium">✓ ({{ t('gamestart.shootoutPause', { n: selectedTemplate.soBreakDuration }) }})</span>
             <span v-else class="ml-2 text-base-content/30">–</span>
           </div>
-          <!-- Straftypen -->
+          <!-- Penalty types -->
           <div class="col-span-2 mt-1 pt-2 border-t border-base-content/10">
             <span class="text-base-content/40">{{ t('gamestart.penalties') }}</span>
             <span v-if="!selectedTemplate.penaltyTypes?.length" class="ml-2 text-base-content/30">–</span>
@@ -115,19 +115,35 @@
     <div class="w-full max-w-2xl">
       <button @click="startGame" class="btn btn-success btn-lg w-full">{{ t('gamestart.startBtn') }}</button>
     </div>
-    <p class="text-xs text-base-content/40 mt-3 text-center">{{ t('gamestart.startHint') }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
+// This component has no own route anymore — it's embedded inside Operator.vue
+// and shown automatically whenever no game is currently running
+// (phase === 'pregame'). It no longer owns a WebSocket connection itself —
+// the parent (Operator.vue) holds the single persistent connection and is
+// responsible for actually sending SET_CONFIG, so that starting a game and
+// watching it live happen on the same socket without a reconnect round-trip.
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { SportsTemplate } from '../../shared/types';
-import { authHeaders, getToken, clearToken } from '../shared';
+import { authHeaders, clearToken } from '../shared';
 import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
 const router = useRouter();
+
+const emit = defineEmits<{
+  start: [payload: {
+    homeTeam: string; awayTeam: string; homeColor: string; awayColor: string; templateSlug: string;
+    config: {
+      numPeriods: number; periodDuration: number; breakDuration: number;
+      hasOvertime: boolean; numOtPeriods: number | null; otDuration: number;
+      otSuddenDeath: boolean; otBreakDuration: number; hasShootout: boolean; soBreakDuration: number;
+    };
+  }];
+}>();
 
 const templates     = ref<SportsTemplate[]>([]);
 const cfgHome       = ref('');
@@ -139,11 +155,6 @@ const cfgTemplateId = ref(0);
 const selectedTemplate = computed(() =>
   templates.value.find(tmpl => tmpl.id === cfgTemplateId.value) ?? null
 );
-
-function wsUrl() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${location.host}/socket`;
-}
 
 async function loadTemplates() {
   try {
@@ -170,31 +181,24 @@ function startGame() {
     return;
   }
 
-  const ws = new WebSocket(wsUrl());
-  ws.addEventListener('open', () => {
-    // Authenticate first, then send SET_CONFIG
-    ws.send(JSON.stringify({ type: 'AUTH', token: getToken() }));
-    ws.send(JSON.stringify({
-      cmd: 'SET_CONFIG',
-      homeTeam:  cfgHome.value.trim().toUpperCase() || t('common.home'),
-      awayTeam:  cfgAway.value.trim().toUpperCase() || t('common.away'),
-      homeColor: cfgHomeColor.value,
-      awayColor: cfgAwayColor.value,
-      templateSlug: tmpl.slug,
-      config: {
-        numPeriods:      tmpl.numPeriods,
-        periodDuration:  tmpl.periodDuration,
-        breakDuration:   tmpl.breakDuration,
-        hasOvertime:     tmpl.hasOvertime,
-        numOtPeriods:    tmpl.numOtPeriods,
-        otDuration:      tmpl.otDuration,
-        otSuddenDeath:   tmpl.otSuddenDeath,
-        otBreakDuration: tmpl.otBreakDuration,
-        hasShootout:     tmpl.hasShootout,
-        soBreakDuration: tmpl.soBreakDuration,
-      },
-    }));
-    setTimeout(() => { window.location.href = '/operator'; }, 250);
+  emit('start', {
+    homeTeam:  cfgHome.value.trim().toUpperCase() || t('common.home'),
+    awayTeam:  cfgAway.value.trim().toUpperCase() || t('common.away'),
+    homeColor: cfgHomeColor.value,
+    awayColor: cfgAwayColor.value,
+    templateSlug: tmpl.slug,
+    config: {
+      numPeriods:      tmpl.numPeriods,
+      periodDuration:  tmpl.periodDuration,
+      breakDuration:   tmpl.breakDuration,
+      hasOvertime:     tmpl.hasOvertime,
+      numOtPeriods:    tmpl.numOtPeriods,
+      otDuration:      tmpl.otDuration,
+      otSuddenDeath:   tmpl.otSuddenDeath,
+      otBreakDuration: tmpl.otBreakDuration,
+      hasShootout:     tmpl.hasShootout,
+      soBreakDuration: tmpl.soBreakDuration,
+    },
   });
 }
 
