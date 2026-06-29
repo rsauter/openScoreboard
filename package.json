@@ -7,7 +7,7 @@
     "dev:client": "vite",
     "dev:server": "npx tsx watch bootstrap.ts",
     "dev": "concurrently \"npm run dev:server\" \"sleep 3 && npm run dev:client\"",
-    "build": "vite build && tsc --project tsconfig.server.json",
+    "build": "npm install && npx prisma generate && vite build && tsc --project tsconfig.server.json",
     "start": "node dist/bootstrap.js",
     "quickstart": "npm run build && npm start"
   },
