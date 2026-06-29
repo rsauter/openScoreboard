@@ -2,13 +2,13 @@
   "name": "openscoreboard",
   "version": "1.0.0",
   "description": "Open source sports scoreboard — no database required",
-  "main": "dist/server.js",
+  "main": "dist/bootstrap.js",
   "scripts": {
     "dev:client": "vite",
-    "dev:server": "npx tsx watch server.ts",
+    "dev:server": "npx tsx watch bootstrap.ts",
     "dev": "concurrently \"npm run dev:server\" \"sleep 3 && npm run dev:client\"",
     "build": "vite build && tsc --project tsconfig.server.json",
-    "start": "node dist/server.js",
+    "start": "node dist/bootstrap.js",
     "quickstart": "npm run build && npm start"
   },
   "dependencies": {

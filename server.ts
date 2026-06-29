@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { parse as parseYaml } from 'yaml';
+import { initFleetHeartbeat } from './src/server/fleetHeartbeat';
 import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo } from './src/shared/types';
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
@@ -44,6 +45,7 @@ const DEFAULT_PIN   = '0000';
 
 interface Settings {
   pin?: string;
+  fleetInstanceId?: string;
 }
 
 function loadSettings(): Settings {
@@ -909,6 +911,7 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
 loadYamlTemplates();
 loadStateFromFile();
 startTick();
+initFleetHeartbeat(PROJECT_ROOT, APP_VERSION, loadSettings, saveSettings);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 server.listen(PORT, () => console.log(`\n[INFO] Open Scoreboard running at http://localhost:${PORT}\n`));
