@@ -54,11 +54,11 @@ export interface Penalty {
   duration:        number;             // Seconds (original duration)
   remaining:       number;             // Seconds (countdown, only decreasing when status=running)
   status:          PenaltyStatus;
-  queuePosition:      number | null;      // 1-based, only set when status=queued
-  linkedPenaltyId:    number | null;      // ID of the companion penalty (set on main penalty)
-  parentPenaltyId:    number | null;      // ID of the main penalty (set on companion penalty)
-  blockedByPenaltyId: number | null;      // ID of the slot penalty that must expire first (waiting status)
-  nextPenaltyId:      number | null;      // For 2+2: ID of the second 2min that starts after the first
+  queuePosition:      number | null;   // 1-based, only set when status=queued
+  linkedPenaltyId:    number | null;   // ID of the companion penalty (set on main penalty)
+  parentPenaltyId:    number | null;   // ID of the main penalty (set on companion penalty)
+  blockedByPenaltyId: number | null;   // ID of the slot penalty that must expire first (waiting status)
+  nextPenaltyId:      number | null;   // For 2+2: ID of the second 2min that starts after the first
 }
 
 // #endregion
@@ -104,7 +104,6 @@ export interface GameState {
    *  of remaining time. Breaks always display remaining time regardless of this flag.
    *  Internal timeRemaining always counts down; this only affects display formatting. */
   countUp:         boolean;
-
 
   // Penalty configuration (from template)
   penaltyTypes:    PenaltyType[];
@@ -214,15 +213,47 @@ export interface SportsTemplate {
 
 /** Metadata for a finished/archived game state file, as listed in Settings. */
 export interface ArchivedStateInfo {
-  filename:    string;   // e.g. state_2026-06-17T20-15-00_Home-vs-Away.json
-  archivedAt:  string;   // ISO timestamp, parsed from the filename
-  homeTeam:    string;
-  awayTeam:    string;
-  homeScore:   number;
-  awayScore:   number;
+  filename:     string;    // e.g. state_2026-06-17T20-15-00_Home-vs-Away.json
+  archivedAt:   string;    // ISO timestamp, parsed from the filename
+  homeTeam:     string;
+  awayTeam:     string;
+  homeScore:    number;
+  awayScore:    number;
   homeShootout: number;
   awayShootout: number;
-  phase:       GamePhase;
+  phase:        GamePhase;
+}
+
+// #endregion
+
+// #region ─── License / Fleet Identity ─────────────────────────────────────────────────
+
+/** Subscription state as tracked by scoreboardFLEET for this device. */
+export type SubscriptionStatus = 'unlicensed' | 'active' | 'expired';
+
+/** Contents of license.json (project root).
+ *  Written only by the pairing process or by the one-time migration on first
+ *  startup. Never written by the Settings UI — read-only from the app's perspective.
+ *  fleetInstanceId is generated once on first boot and never changes,
+ *  regardless of licensing state (see ADR-00XX). */
+export interface LicenseInfo {
+  fleetInstanceId:    string;
+  licenseKey:         string | null;
+  organizationName:   string | null;
+  subscriptionStatus: SubscriptionStatus;
+  licenseValidUntil:  string | null;  // ISO date string, null when unlicensed
+}
+
+/** Returns a default (unlicensed) LicenseInfo for a freshly generated fleetInstanceId.
+ *  Used by ensureLicenseFile() on first boot when no license.json exists yet. */
+export function defaultLicenseInfo(fleetInstanceId: string): LicenseInfo {
+  return {
+    fleetInstanceId,
+    licenseKey:         null,
+    organizationName:   null,
+    subscriptionStatus: 'unlicensed',
+    licenseValidUntil:  null,
+  };
 }
 
 // #endregion

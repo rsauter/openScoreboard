@@ -301,5 +301,16 @@
   "settings.pin.errorMatch": "New PINs do not match.",
   "settings.pin.errorLength": "PIN must be at least 4 characters.",
   "settings.pin.errorSave": "Error saving PIN.",
-  "nav.logout": "Log out"
+  "nav.logout": "Log out",
+  "settings.license.title": "License",
+  "settings.license.loading": "Loading license information...",
+  "settings.license.loadError": "License information could not be loaded.",
+  "settings.license.status": "Status",
+  "settings.license.statusValue.unlicensed": "Unlicensed",
+  "settings.license.statusValue.active": "Active",
+  "settings.license.statusValue.expired": "Expired",
+  "settings.license.organization": "Club",
+  "settings.license.validUntil": "Valid until",
+  "settings.license.deviceId": "Device ID",
+  "settings.license.readOnlyNote": "This information is managed centrally and cannot be changed here."
 }

@@ -301,5 +301,16 @@
   "settings.pin.errorMatch": "Les nouveaux PINs ne correspondent pas.",
   "settings.pin.errorLength": "Le PIN doit comporter au moins 4 caractères.",
   "settings.pin.errorSave": "Erreur lors de la sauvegarde.",
-  "nav.logout": "Se déconnecter"
+  "nav.logout": "Se déconnecter",
+  "settings.license.title": "Licence",
+  "settings.license.loading": "Chargement des informations de licence...",
+  "settings.license.loadError": "Les informations de licence n'ont pas pu être chargées.",
+  "settings.license.status": "Statut",
+  "settings.license.statusValue.unlicensed": "Non licencié",
+  "settings.license.statusValue.active": "Actif",
+  "settings.license.statusValue.expired": "Expiré",
+  "settings.license.organization": "Club",
+  "settings.license.validUntil": "Valable jusqu'au",
+  "settings.license.deviceId": "ID de l'appareil",
+  "settings.license.readOnlyNote": "Ces informations sont gérées centralement et ne peuvent pas être modifiées ici."
 }

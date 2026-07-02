@@ -6,7 +6,8 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { parse as parseYaml } from 'yaml';
 import { initFleetHeartbeat } from './src/server/fleetHeartbeat';
-import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo } from './src/shared/types';
+import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo, LicenseInfo, SubscriptionStatus } from './src/shared/types';
+import { defaultLicenseInfo } from './src/shared/types';
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
 
@@ -118,6 +119,108 @@ process.nextTick(() => {
   }
 });
 
+// #endregion
+
+// #region ─── License / Fleet Identity ─────────────────────────────────────────────────
+ 
+const LICENSE_FILE = path.join(PROJECT_ROOT, 'license.json');
+ 
+function loadLicense(): LicenseInfo | null {
+  try {
+    if (fs.existsSync(LICENSE_FILE)) {
+      return JSON.parse(fs.readFileSync(LICENSE_FILE, 'utf-8')) as LicenseInfo;
+    }
+  } catch (e: any) {
+    console.error('[ERROR] Failed to load license.json:', e.message);
+  }
+  return null;
+}
+ 
+function saveLicense(info: LicenseInfo): void {
+  try {
+    fs.writeFileSync(LICENSE_FILE, JSON.stringify(info, null, 2));
+  } catch (e: any) {
+    console.error('[ERROR] Failed to save license.json:', e.message);
+  }
+}
+ 
+/** Ensures license.json exists, migrating a legacy fleetInstanceId out of
+ *  settings.json if present. Generates a fresh fleetInstanceId only if
+ *  neither license.json nor a legacy settings.json value exists. Call once
+ *  on server startup, before the Fleet heartbeat client reads its ID. */
+function ensureLicenseFile(): LicenseInfo {
+  const existing = loadLicense();
+  if (existing) return existing;
+ 
+  // Legacy migration: older deployments stored fleetInstanceId in settings.json.
+  // The Settings interface intentionally no longer declares this field going
+  // forward, so we read it defensively as an untyped lookup here.
+  const legacySettings = loadSettings() as Settings & { fleetInstanceId?: string };
+  const fleetInstanceId = legacySettings.fleetInstanceId ?? crypto.randomUUID();
+ 
+  const license = defaultLicenseInfo(fleetInstanceId);
+  saveLicense(license);
+ 
+  if (legacySettings.fleetInstanceId) {
+    console.log('[INFO] Migrated fleetInstanceId from settings.json to license.json.');
+    const { fleetInstanceId: _drop, ...rest } = legacySettings;
+    saveSettings(rest);
+  } else {
+    console.log('[INFO] Generated new fleetInstanceId and created license.json.');
+  }
+ 
+  return license;
+}
+ 
+// Run once at startup. The returned value is what fleetHeartbeat.ts should
+// import/use instead of reading fleetInstanceId out of settings.json.
+const licenseInfo = ensureLicenseFile();
+ 
+/** GET /api/license — read-only license info for the Settings UI. */
+app.get('/api/license', requireAuth, (_req, res) => {
+  const current = loadLicense() ?? licenseInfo;
+  res.json(current);
+});
+ 
+/** POST /api/license/pair — body: { licenseKey: string }
+ *  Sends the key + existing fleetInstanceId to Fleet for validation/binding.
+ *  Fleet response is expected to return the resolved organizationName,
+ *  subscriptionStatus and licenseValidUntil, which are then persisted
+ *  locally. fleetInstanceId itself is never modified here. */
+app.post('/api/license/pair', requireAuth, async (req, res) => {
+  const { licenseKey } = req.body as { licenseKey?: string };
+  if (!licenseKey || typeof licenseKey !== 'string') {
+    res.status(400).json({ error: 'licenseKey is required' });
+    return;
+  }
+ 
+  const current = loadLicense() ?? licenseInfo;
+ 
+  try {
+    // TODO: replace with actual Fleet pairing endpoint call once defined,
+    // e.g. POST {FLEET_URL}/api/devices/pair { fleetInstanceId, licenseKey }
+    // const fleetResponse = await fetch(`${process.env.FLEET_URL}/api/devices/pair`, { ... });
+    // const { organizationName, subscriptionStatus, licenseValidUntil } = await fleetResponse.json();
+ 
+    res.status(501).json({ error: 'Fleet pairing endpoint not yet implemented' });
+    return;
+ 
+    // Once implemented, persist like this:
+    // const updated: LicenseInfo = {
+    //   ...current,
+    //   licenseKey,
+    //   organizationName,
+    //   subscriptionStatus,
+    //   licenseValidUntil,
+    // };
+    // saveLicense(updated);
+    // res.json(updated);
+  } catch (e: any) {
+    console.error('[ERROR] License pairing failed:', e.message);
+    res.status(502).json({ error: 'Could not reach Fleet for pairing' });
+  }
+});
+ 
 // #endregion
 
 // #region ─── Default Penalty Config ───────────────────────────────────────────

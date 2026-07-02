@@ -301,5 +301,16 @@
   "settings.pin.errorMatch": "I nuovi PIN non corrispondono.",
   "settings.pin.errorLength": "Il PIN deve avere almeno 4 caratteri.",
   "settings.pin.errorSave": "Errore durante il salvataggio.",
-  "nav.logout": "Disconnettersi"
+  "nav.logout": "Disconnettersi",
+  "settings.license.title": "Licenza",
+  "settings.license.loading": "Caricamento informazioni licenza...",
+  "settings.license.loadError": "Impossibile caricare le informazioni sulla licenza.",
+  "settings.license.status": "Stato",
+  "settings.license.statusValue.unlicensed": "Non licenziato",
+  "settings.license.statusValue.active": "Attivo",
+  "settings.license.statusValue.expired": "Scaduto",
+  "settings.license.organization": "Società",
+  "settings.license.validUntil": "Valido fino al",
+  "settings.license.deviceId": "ID dispositivo",
+  "settings.license.readOnlyNote": "Queste informazioni sono gestite centralmente tramite Fleet e non possono essere modificate qui."
 }

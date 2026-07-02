@@ -301,5 +301,16 @@
   "settings.pin.errorMatch": "Neue PINs stimmen nicht überein.",
   "settings.pin.errorLength": "PIN muss mindestens 4 Zeichen lang sein.",
   "settings.pin.errorSave": "Fehler beim Speichern.",
-  "nav.logout": "Abmelden"
+  "nav.logout": "Abmelden",
+  "settings.license.title": "Lizenz",
+  "settings.license.loading": "Lade Lizenzinformationen...",
+  "settings.license.loadError": "Lizenzinformationen konnten nicht geladen werden.",
+  "settings.license.status": "Status",
+  "settings.license.statusValue.unlicensed": "Nicht lizenziert",
+  "settings.license.statusValue.active": "Aktiv",
+  "settings.license.statusValue.expired": "Abgelaufen",
+  "settings.license.organization": "Verein",
+  "settings.license.validUntil": "Gültig bis",
+  "settings.license.deviceId": "Geräte-ID",
+  "settings.license.readOnlyNote": "Diese Informationen werden zentral verwaltet und können hier nicht geändert werden."
 }
