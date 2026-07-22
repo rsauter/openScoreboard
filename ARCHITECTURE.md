@@ -70,11 +70,77 @@ manual intervention.
 nowhere — the symptom was an empty template dropdown despite the YAML
 templates being loaded correctly on the server side.
 
+### Fixed dev port (5174), not Vite's default
+Vite's default dev port (5173) is also `scoreboardFLEET`'s default — and
+Fleet has that exact port hard-coded into its OAuth redirect URIs at
+Google/Microsoft/Infomaniak (see scoreboardFLEET's ARCHITECTURE notes).
+Whichever of the two projects starts first used to grab 5173, silently
+pushing the other onto 5174 — meaning Fleet's OAuth post-login redirect
+would land on the wrong project (or nowhere) purely depending on start
+order, with no error to point at why. Fixed by pinning openScoreboard's dev
+port to `5174` with `strictPort: true`, so it never contends for 5173 and
+fails loudly (instead of silently falling back) if 5174 is somehow already
+taken by something else.
+
 ### `tsconfig.server.json`
 A separate tsconfig for the server build (`vite build && tsc --project
 tsconfig.server.json`). Uses `module: Node16` / `moduleResolution: Node16`
 (not the deprecated `"node"` option, which throws a deprecation error under
 newer TypeScript versions).
+
+### Fleet device pairing (ADR-0015, Fleet-side) — short code flow
+The Settings UI's "Mit Fleet verbinden" section calls this server's own
+`POST /api/pairing/initiate`, which proxies to Fleet's
+`POST {FLEET_URL}/api/pairing/initiate` (same "browser never talks to Fleet
+directly" pattern as the existing `/api/license/pair` stub). Fleet returns a
+short code (10 min validity) that the ClubAdmin enters into Fleet's own UI.
+The browser then polls this server's `GET /api/pairing/status/:code` every
+3 seconds, which itself proxies to Fleet's status endpoint. Once the code
+is claimed, the resolved `organizationName` is persisted into `license.json`
+immediately; `subscriptionStatus`/`licenseValidUntil` are a separate,
+not-yet-designed concept (see "Open items" below) and are intentionally
+left untouched by this flow.
+
+The countdown shown to the user is recomputed from `Date.now()` vs.
+`expiresAt` on every tick (same drift-resistant pattern as the game clock),
+not a fixed decrement — so it stays correct even if the browser tab was
+backgrounded or the laptop was asleep.
+
+### Fleet device trust secret (ADR-0016, Fleet-side) — trust-on-first-use
+Fleet now accepts an optional `deviceSecret` field on `POST /api/heartbeat`,
+`POST /api/pairing/initiate`, and `POST /api/license/pair`. Whichever call
+arrives first for a given `fleetInstanceId` establishes the secret on
+Fleet's side; every later call must send the same value or Fleet rejects it.
+
+This device's secret is generated once (256-bit random, hex-encoded) and
+persisted in its own `device-secret.json` — deliberately **not** inside
+`license.json`. `GET /api/license` returns the full `LicenseInfo` object
+straight off disk for the Settings UI; keeping the secret in a separate file
+that no route ever serializes back out means it structurally cannot leak to
+the browser, even if `LicenseInfo` gains fields later. See
+`src/server/deviceSecret.ts`.
+
+`POST /api/instances/:id/profile` also accepts `deviceSecret` on the Fleet
+side, but openScoreboard doesn't call that endpoint (no client-side profile
+push exists yet), so it isn't wired up here.
+
+### Bug fix: heartbeat was reporting a second, divergent instance ID
+Before this change, `initFleetHeartbeat()` resolved `fleetInstanceId` by
+reading `settings.json` — but an earlier session had already migrated that
+value out of `settings.json` into `license.json` (see `ensureLicenseFile()`).
+Since the field was gone from `settings.json`, the heartbeat code generated
+a **new** random UUID on every restart and wrote it back to `settings.json`,
+so heartbeats used a different instance ID than pairing/license calls did.
+Fixed by having `server.ts` pass the already-resolved `license.json`
+`fleetInstanceId` straight into `initFleetHeartbeat()`, removing the dead
+settings.json-based resolution entirely.
+
+### `license.json` was never gitignored
+`license.json` contains this installation's `fleetInstanceId` and was
+missing from `.gitignore` — unlike `settings.json` and `state.json`, which
+are the same category of per-installation runtime file. Fixed alongside
+adding the new `device-secret.json` to `.gitignore`. Worth checking git
+history for any previously committed `license.json` on existing clones.
 
 ## Deployment
 
@@ -171,6 +237,15 @@ dedicated scoreboard Pi.
 
 ## Open items / next steps
 
+- **Railway + Fleet pairing: ephemeral storage caveat (accepted for now).**
+  `license.json` and `device-secret.json` are gitignored runtime files, same
+  category as `settings.json` — on Railway's ephemeral containers, a
+  redeployment resets them, meaning `fleetInstanceId` and `deviceSecret` are
+  regenerated and Fleet sees it as a brand-new device requiring re-pairing.
+  Not an issue on the Pi (persistent process/disk), which is the intended
+  production target for real clients. Railway is treated as a staging/test
+  environment for now, not a real Fleet-paired deployment target — if that
+  changes, a persistent volume for the project root would be needed first.
 - **Pi deployment tested successfully** on Pi 3B / Raspberry Pi OS Lite —
   see above. Still open: end-to-end crash recovery has now been observed
   informally (SSH disconnect + full reboot mid-game both recovered

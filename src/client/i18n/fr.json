@@ -312,5 +312,16 @@
   "settings.license.organization": "Club",
   "settings.license.validUntil": "Valable jusqu'au",
   "settings.license.deviceId": "ID de l'appareil",
-  "settings.license.readOnlyNote": "Ces informations sont gérées centralement et ne peuvent pas être modifiées ici."
+  "settings.license.readOnlyNote": "Ces informations sont gérées centralement et ne peuvent pas être modifiées ici.",
+  "settings.pairing.title": "Se connecter à Fleet",
+  "settings.pairing.description": "Connectez cet appareil à votre club dans Fleet pour recevoir les mises à jour, les modèles de sport et le support.",
+  "settings.pairing.connectBtn": "Se connecter",
+  "settings.pairing.initiating": "Demande du code en cours...",
+  "settings.pairing.instructions": "Saisissez ce code dans Fleet pour connecter cet appareil à votre club.",
+  "settings.pairing.expiresIn": "Expire dans {time}",
+  "settings.pairing.expired": "Le code a expiré.",
+  "settings.pairing.retryBtn": "Demander un nouveau code",
+  "settings.pairing.initiateError": "Impossible de demander un code.",
+  "settings.pairing.alreadyConnected": "Connecté à {organization}.",
+  "settings.pairing.reconnectBtn": "Se reconnecter"
 }

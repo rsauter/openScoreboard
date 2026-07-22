@@ -7,18 +7,22 @@
 //
 // The instance's identity (fleetInstanceId) is NOT set manually via .env.
 // Instead it is generated once, on first boot, as a random UUID and persisted
-// in settings.json (the same file that already stores the operator PIN).
-// This avoids manual setup mistakes (typos, duplicate IDs across Pis) and
-// stays stable across WiFi/Ethernet switches or SD-card clones — unlike a
-// MAC-address-based ID, which would tie the instance's identity to a single
-// piece of hardware rather than to "this installation at this venue".
+// in license.json (see server.ts ensureLicenseFile()). This avoids manual
+// setup mistakes (typos, duplicate IDs across Pis) and stays stable across
+// WiFi/Ethernet switches or SD-card clones — unlike a MAC-address-based ID,
+// which would tie the instance's identity to a single piece of hardware
+// rather than to "this installation at this venue".
 
 import os from 'os';
 import fs from 'fs';
-import crypto from 'crypto';
 
-const FLEET_ENDPOINT = process.env.FLEET_HEARTBEAT_URL;      // e.g. https://scoreboardfleet.up.railway.app
-const FLEET_SECRET    = process.env.FLEET_SECRET;            // shared secret, must match scoreboardFLEET's value
+// FLEET_HEARTBEAT_URL is the base URL for all Fleet calls, not just the
+// heartbeat — the name is kept for backward compatibility with existing
+// Railway/Pi deployments (renaming would require updating every environment).
+// Exported so server.ts can reuse the same base URL / secret for the device
+// pairing endpoints instead of re-reading process.env in two places.
+export const FLEET_ENDPOINT = process.env.FLEET_HEARTBEAT_URL; // e.g. https://scoreboardfleet.up.railway.app
+export const FLEET_SECRET    = process.env.FLEET_SECRET;       // shared secret, must match scoreboardFLEET's value
 const FLEET_CHANNEL   = process.env.FLEET_CHANNEL ?? 'stable'; // 'stable' | 'canary'
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -44,47 +48,13 @@ export function bufferFleetError(msg: string): void {
 // without alarming color-coding — see ARCHITECTURE notes on this pattern.
 export let lastFleetPushSucceeded = true;
 
-// ─── Identity: generate-once, persist, never overwritten by updates ──────
-// Reuses the existing loadSettings()/saveSettings() pair from server.ts
-// rather than duplicating file I/O here — passed in via initFleetHeartbeat()
-// to avoid a circular import between this module and server.ts.
-
-interface SettingsWithFleetId {
-  fleetInstanceId?: string;
-}
-
-let resolvedInstanceId: string | null = null;
-
-function getOrCreateInstanceId(
-  loadSettings: () => SettingsWithFleetId,
-  saveSettings: (s: SettingsWithFleetId) => void
-): string {
-  if (resolvedInstanceId) return resolvedInstanceId; // cached after first resolution this run
-
-  const settings = loadSettings();
-  if (settings.fleetInstanceId) {
-    resolvedInstanceId = settings.fleetInstanceId;
-    return resolvedInstanceId;
-  }
-
-  // First boot ever for this installation — generate once, persist forever.
-  // Subsequent restarts (including after `git pull` updates) will find this
-  // value already present in settings.json and reuse it, never regenerating.
-  const newId = crypto.randomUUID();
-  settings.fleetInstanceId = newId;
-  saveSettings(settings);
-  console.log(`[INFO] Generated new fleet instance ID: ${newId} (persisted in settings.json)`);
-  resolvedInstanceId = newId;
-  return newId;
-}
-
-// Exposed so Settings.vue's GET /api/settings (or equivalent) can display the
-// ID read-only, without re-running the generation logic.
-export function getFleetInstanceId(
-  loadSettings: () => SettingsWithFleetId
-): string | null {
-  return loadSettings().fleetInstanceId ?? null;
-}
+// ─── Identity ──────────────────────────────────────────────────────────────
+// fleetInstanceId now lives exclusively in license.json (see server.ts
+// ensureLicenseFile()), which already handles the generate-once/migrate-once
+// logic. It's passed into initFleetHeartbeat() below instead of being
+// re-resolved here, so heartbeats always report the same instanceId that
+// the pairing/license endpoints use — the two must never diverge, since
+// Fleet identifies this installation by that ID.
 
 // ─── Pi-specific telemetry (best-effort, never throws) ───────────────────
 
@@ -158,11 +128,12 @@ function readCpuTempC(): number | null {
 
 // ─── Heartbeat sender ──────────────────────────────────────────────────────
 
-async function sendHeartbeat(instanceId: string, appVersion: string): Promise<void> {
+async function sendHeartbeat(instanceId: string, appVersion: string, deviceSecret: string): Promise<void> {
   if (!FLEET_ENDPOINT) return; // feature fully optional
 
   const payload = {
     instanceId,
+    deviceSecret, // trust-on-first-use, see ADR-0016 — same value on every call, never regenerated
     version:        appVersion,
     channel:        FLEET_CHANNEL,
     status:         recentErrorBuffer.length > 0 ? 'degraded' : 'ok',
@@ -198,8 +169,8 @@ async function sendHeartbeat(instanceId: string, appVersion: string): Promise<vo
 export function initFleetHeartbeat(
   projectRoot: string,
   appVersion: string,
-  loadSettings: () => SettingsWithFleetId,
-  saveSettings: (s: SettingsWithFleetId) => void
+  instanceId: string,
+  deviceSecret: string
 ): void {
   PROJECT_ROOT_FOR_DISK_CHECK = projectRoot;
 
@@ -208,10 +179,9 @@ export function initFleetHeartbeat(
     return;
   }
 
-  const instanceId = getOrCreateInstanceId(loadSettings, saveSettings);
   console.log(`[INFO] Fleet heartbeat enabled — instance "${instanceId}", channel "${FLEET_CHANNEL}".`);
-  sendHeartbeat(instanceId, appVersion); // fire once immediately on boot, then on the regular interval
-  setInterval(() => sendHeartbeat(instanceId, appVersion), HEARTBEAT_INTERVAL_MS);
+  sendHeartbeat(instanceId, appVersion, deviceSecret); // fire once immediately on boot, then on the regular interval
+  setInterval(() => sendHeartbeat(instanceId, appVersion, deviceSecret), HEARTBEAT_INTERVAL_MS);
 }
 
 // #endregion

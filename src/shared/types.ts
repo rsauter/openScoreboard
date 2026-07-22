@@ -257,3 +257,22 @@ export function defaultLicenseInfo(fleetInstanceId: string): LicenseInfo {
 }
 
 // #endregion
+
+// #region ─── Fleet Device Pairing (ADR-0015) ───────────────────────────────────────────
+
+/** Lifecycle status of an in-progress Fleet device pairing code. */
+export type PairingStatus = 'pending' | 'claimed' | 'expired';
+
+/** Response from POST /api/pairing/initiate. */
+export interface PairingInitiateResponse {
+  code:      string;  // e.g. "K7M-3XQ" — valid for 10 minutes
+  expiresAt: string;  // ISO timestamp
+}
+
+/** Response from GET /api/pairing/status/:code. */
+export interface PairingStatusResponse {
+  status:           PairingStatus;
+  organizationName: string | null;
+}
+
+// #endregion

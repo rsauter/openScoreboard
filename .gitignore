@@ -9,4 +9,6 @@ dist/
 state.json
 settings.json
 state-archive/
+license.json
+device-secret.json
 public/

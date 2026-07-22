@@ -8,6 +8,8 @@ export default defineConfig({
   root: 'src/client',
   server: {
     host: '0.0.0.0',
+    port: 5174,
+    strictPort: true,
     proxy: {
       '/api': 'http://localhost:3000',
       '^/socket': {

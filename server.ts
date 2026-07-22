@@ -5,8 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { parse as parseYaml } from 'yaml';
-import { initFleetHeartbeat } from './src/server/fleetHeartbeat';
-import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo, LicenseInfo, SubscriptionStatus } from './src/shared/types';
+import { initFleetHeartbeat, FLEET_ENDPOINT, FLEET_SECRET } from './src/server/fleetHeartbeat';
+import { getOrCreateDeviceSecret } from './src/server/deviceSecret';
+import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo, LicenseInfo, SubscriptionStatus, PairingInitiateResponse, PairingStatusResponse } from './src/shared/types';
 import { defaultLicenseInfo } from './src/shared/types';
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
@@ -175,6 +176,11 @@ function ensureLicenseFile(): LicenseInfo {
 // Run once at startup. The returned value is what fleetHeartbeat.ts should
 // import/use instead of reading fleetInstanceId out of settings.json.
 const licenseInfo = ensureLicenseFile();
+
+// Trust-on-first-use secret for all Fleet calls (heartbeat, pairing, license
+// pairing) — see ADR-0016 and src/server/deviceSecret.ts. Resolved once here
+// so every call site below uses the exact same value for this process's lifetime.
+const deviceSecret = getOrCreateDeviceSecret(PROJECT_ROOT);
  
 /** GET /api/license — read-only license info for the Settings UI. */
 app.get('/api/license', requireAuth, (_req, res) => {
@@ -198,7 +204,9 @@ app.post('/api/license/pair', requireAuth, async (req, res) => {
  
   try {
     // TODO: replace with actual Fleet pairing endpoint call once defined,
-    // e.g. POST {FLEET_URL}/api/devices/pair { fleetInstanceId, licenseKey }
+    // e.g. POST {FLEET_URL}/api/devices/pair { fleetInstanceId, licenseKey, deviceSecret }
+    // (deviceSecret per ADR-0016 — see the /api/pairing/initiate implementation
+    // below for a working example of attaching it to a Fleet call)
     // const fleetResponse = await fetch(`${process.env.FLEET_URL}/api/devices/pair`, { ... });
     // const { organizationName, subscriptionStatus, licenseValidUntil } = await fleetResponse.json();
  
@@ -221,6 +229,92 @@ app.post('/api/license/pair', requireAuth, async (req, res) => {
   }
 });
  
+// #endregion
+
+// #region ─── Fleet Device Pairing (ADR-0015 / ADR-0016) ───────────────────────
+// Short-code pairing flow: the ClubAdmin enters the code shown here into
+// Fleet's UI to bind this device to their organization. Both endpoints are
+// thin proxies to Fleet — the browser never talks to Fleet directly, same
+// pattern as /api/license/pair above. deviceSecret (trust-on-first-use, see
+// ADR-0016) is attached to /pairing/initiate; Fleet's status endpoint does
+// not need it since the instance is already bound by that point.
+
+/** POST /api/pairing/initiate — asks Fleet for a fresh pairing code for this
+ *  device's fleetInstanceId. Returns { code, expiresAt } straight from Fleet. */
+app.post('/api/pairing/initiate', requireAuth, async (_req, res) => {
+  if (!FLEET_ENDPOINT) {
+    res.status(503).json({ error: 'Fleet integration not configured (FLEET_HEARTBEAT_URL not set)' });
+    return;
+  }
+
+  const current = loadLicense() ?? licenseInfo;
+
+  try {
+    const fleetRes = await fetch(`${FLEET_ENDPOINT}/api/pairing/initiate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(FLEET_SECRET ? { 'X-Fleet-Secret': FLEET_SECRET } : {}),
+      },
+      body: JSON.stringify({ instanceId: current.fleetInstanceId, deviceSecret }),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!fleetRes.ok) {
+      console.error(`[ERROR] Fleet pairing/initiate rejected (HTTP ${fleetRes.status}).`);
+      res.status(502).json({ error: 'Fleet rejected the pairing request' });
+      return;
+    }
+
+    const result = await fleetRes.json() as PairingInitiateResponse;
+    res.json(result);
+  } catch (e: any) {
+    console.error('[ERROR] Fleet pairing/initiate failed:', e.message);
+    res.status(502).json({ error: 'Could not reach Fleet to start pairing' });
+  }
+});
+
+/** GET /api/pairing/status/:code — polls Fleet for the current status of a
+ *  pairing code. Once claimed, persists the resolved organizationName into
+ *  license.json. subscriptionStatus/licenseValidUntil are a separate,
+ *  not-yet-designed concept (see ARCHITECTURE.md "Open items") and are
+ *  intentionally left untouched here. */
+app.get('/api/pairing/status/:code', requireAuth, async (req, res) => {
+  if (!FLEET_ENDPOINT) {
+    res.status(503).json({ error: 'Fleet integration not configured (FLEET_HEARTBEAT_URL not set)' });
+    return;
+  }
+
+  const codeParam = req.params.code;
+  const code = Array.isArray(codeParam) ? codeParam[0] : codeParam;
+
+  try {
+    const fleetRes = await fetch(`${FLEET_ENDPOINT}/api/pairing/status/${encodeURIComponent(code)}`, {
+      headers: {
+        ...(FLEET_SECRET ? { 'X-Fleet-Secret': FLEET_SECRET } : {}),
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!fleetRes.ok) {
+      res.status(502).json({ error: 'Fleet rejected the status request' });
+      return;
+    }
+
+    const status = await fleetRes.json() as PairingStatusResponse;
+
+    if (status.status === 'claimed' && status.organizationName) {
+      const current = loadLicense() ?? licenseInfo;
+      saveLicense({ ...current, organizationName: status.organizationName });
+    }
+
+    res.json(status);
+  } catch (e: any) {
+    console.error('[ERROR] Fleet pairing/status failed:', e.message);
+    res.status(502).json({ error: 'Could not reach Fleet for pairing status' });
+  }
+});
+
 // #endregion
 
 // #region ─── Default Penalty Config ───────────────────────────────────────────
@@ -1014,7 +1108,7 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
 loadYamlTemplates();
 loadStateFromFile();
 startTick();
-initFleetHeartbeat(PROJECT_ROOT, APP_VERSION, loadSettings, saveSettings);
+initFleetHeartbeat(PROJECT_ROOT, APP_VERSION, licenseInfo.fleetInstanceId, deviceSecret);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 server.listen(PORT, () => console.log(`\n[INFO] Open Scoreboard running at http://localhost:${PORT}\n`));

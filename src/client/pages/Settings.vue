@@ -159,6 +159,48 @@
       </div>
     </div>
 
+    <!-- ─── Fleet device pairing ───────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.pairing.title') }}</h2>
+
+        <template v-if="pairingStatus === 'claimed' || (pairingStatus === 'idle' && license?.organizationName)">
+          <p class="text-sm">{{ t('settings.pairing.alreadyConnected', { organization: pairingConnectedOrgName }) }}</p>
+          <button class="btn btn-ghost btn-sm w-fit" @click="startPairing">
+            {{ t('settings.pairing.reconnectBtn') }}
+          </button>
+        </template>
+
+        <template v-else>
+          <p v-if="pairingStatus === 'idle'" class="text-sm opacity-70">{{ t('settings.pairing.description') }}</p>
+
+          <button v-if="pairingStatus === 'idle'" class="btn btn-primary btn-sm w-fit" @click="startPairing">
+            {{ t('settings.pairing.connectBtn') }}
+          </button>
+
+          <div v-else-if="pairingStatus === 'connecting'" class="opacity-60 text-sm">
+            {{ t('settings.pairing.initiating') }}
+          </div>
+
+          <div v-else-if="pairingStatus === 'pending'" class="flex flex-col items-center gap-2 py-2">
+            <span class="font-mono text-4xl tracking-widest">{{ pairingCode }}</span>
+            <span class="text-sm opacity-70">{{ t('settings.pairing.instructions') }}</span>
+            <span class="text-xs opacity-50">{{ t('settings.pairing.expiresIn', { time: pairingCountdownLabel }) }}</span>
+          </div>
+
+          <div v-else-if="pairingStatus === 'expired'" class="alert alert-warning text-sm py-2 flex items-center justify-between gap-2">
+            <span>{{ t('settings.pairing.expired') }}</span>
+            <button class="btn btn-ghost btn-xs" @click="startPairing">{{ t('settings.pairing.retryBtn') }}</button>
+          </div>
+
+          <div v-else-if="pairingStatus === 'error'" class="alert alert-error text-sm py-2 flex items-center justify-between gap-2">
+            <span>{{ t('settings.pairing.initiateError') }}</span>
+            <button class="btn btn-ghost btn-xs" @click="startPairing">{{ t('settings.pairing.retryBtn') }}</button>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <!-- ─── About ─────────────────────────────────────────────────────────── -->
     <div class="card bg-base-200 shadow">
       <div class="card-body gap-4">
@@ -177,12 +219,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { setLocale, type Locale } from '../i18n';
 import { showConfirm, showToast, authHeaders, clearToken } from '../shared';
-import type { ArchivedStateInfo, LicenseInfo, SubscriptionStatus } from '../../shared/types';
+import type { ArchivedStateInfo, LicenseInfo, SubscriptionStatus, PairingInitiateResponse, PairingStatusResponse } from '../../shared/types';
 
 const { t, locale } = useI18n();
 const router = useRouter();
@@ -365,9 +407,110 @@ function statusBadgeClass(status: SubscriptionStatus): string {
   }
 }
 
+// ─── Fleet device pairing (ADR-0015) ───────────────────────────────────────────
+// Short-code flow: POST /api/pairing/initiate gets a code from Fleet, then we
+// poll GET /api/pairing/status/:code every few seconds until it's claimed (or
+// expires). Both calls are proxied through our own server — see server.ts —
+// so the browser never talks to Fleet directly.
+type PairingStatusUi = 'idle' | 'connecting' | 'pending' | 'claimed' | 'expired' | 'error';
+
+const pairingStatus    = ref<PairingStatusUi>('idle');
+const pairingCode      = ref<string | null>(null);
+const pairingExpiresAt = ref<string | null>(null);
+const pairingOrganization  = ref<string | null>(null);
+const pairingSecondsLeft   = ref<number | null>(null);
+
+let pairingPollTimer: ReturnType<typeof setInterval> | null = null;
+let pairingCountdownTimer: ReturnType<typeof setInterval> | null = null;
+
+const pairingConnectedOrgName = computed(() => pairingOrganization.value ?? license.value?.organizationName ?? '');
+
+const pairingCountdownLabel = computed(() => {
+  if (pairingSecondsLeft.value == null) return '';
+  const m = Math.floor(pairingSecondsLeft.value / 60);
+  const s = pairingSecondsLeft.value % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+});
+
+function stopPairingPoll(): void {
+  if (pairingPollTimer !== null) { clearInterval(pairingPollTimer); pairingPollTimer = null; }
+}
+
+function stopPairingCountdown(): void {
+  if (pairingCountdownTimer !== null) { clearInterval(pairingCountdownTimer); pairingCountdownTimer = null; }
+}
+
+/** Recomputed from Date.now() on every tick rather than a fixed decrement —
+ *  same drift-resistant pattern as the game clock — so a slow/suspended
+ *  browser tab still shows the correct time left once it resumes. */
+function updatePairingCountdown(): void {
+  if (!pairingExpiresAt.value) { pairingSecondsLeft.value = null; return; }
+  const secs = Math.max(0, Math.round((new Date(pairingExpiresAt.value).getTime() - Date.now()) / 1000));
+  pairingSecondsLeft.value = secs;
+  if (secs === 0 && pairingStatus.value === 'pending') {
+    pairingStatus.value = 'expired';
+    stopPairingPoll();
+    stopPairingCountdown();
+  }
+}
+
+async function checkPairingStatus(): Promise<void> {
+  if (!pairingCode.value) return;
+  try {
+    const res = await fetch(`/api/pairing/status/${encodeURIComponent(pairingCode.value)}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error('Request failed');
+    const data = await res.json() as PairingStatusResponse;
+
+    if (data.status === 'claimed') {
+      pairingStatus.value = 'claimed';
+      pairingOrganization.value = data.organizationName;
+      stopPairingPoll();
+      stopPairingCountdown();
+      loadLicense(); // refresh the read-only License card above with the new organization
+    } else if (data.status === 'expired') {
+      pairingStatus.value = 'expired';
+      stopPairingPoll();
+      stopPairingCountdown();
+    }
+    // 'pending' — keep polling, nothing to do yet
+  } catch {
+    // Transient network hiccup — stay on 'pending' and let the next poll retry,
+    // rather than flipping to an error state on a single missed request.
+  }
+}
+
+async function startPairing(): Promise<void> {
+  stopPairingPoll();
+  stopPairingCountdown();
+  pairingStatus.value = 'connecting';
+  pairingCode.value = null;
+  pairingExpiresAt.value = null;
+
+  try {
+    const res = await fetch('/api/pairing/initiate', { method: 'POST', headers: authHeaders() });
+    if (!res.ok) throw new Error('Request failed');
+    const data = await res.json() as PairingInitiateResponse;
+
+    pairingCode.value = data.code;
+    pairingExpiresAt.value = data.expiresAt;
+    pairingStatus.value = 'pending';
+
+    updatePairingCountdown();
+    pairingCountdownTimer = setInterval(updatePairingCountdown, 1000);
+    pairingPollTimer = setInterval(checkPairingStatus, 3000);
+  } catch {
+    pairingStatus.value = 'error';
+  }
+}
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
   loadArchivedStates();
   loadLicense();
+});
+
+onUnmounted(() => {
+  stopPairingPoll();
+  stopPairingCountdown();
 });
 </script>
