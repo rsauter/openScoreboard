@@ -62,6 +62,15 @@
     text-transform: uppercase;
     letter-spacing: 2px;
     color: #fff;
+    /* Safety guard: abbreviations can be up to 8 chars (ADR-0009). At 2.8vw
+       there's comfortable room in the header even at 8 chars on typical TV/
+       beamer widths, but this prevents any edge-case overflow from breaking
+       the diagonal-cut header layout. */
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   /* ── Uhr Mitte ── */

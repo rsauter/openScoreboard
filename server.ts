@@ -844,7 +844,10 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
       const penTypes:    PenaltyType[]   = tmpl?.penaltyTypes    ?? DEFAULT_PENALTY_TYPES;
       const penSettings: PenaltySettings = tmpl?.penaltySettings ?? DEFAULT_PENALTY_SETTINGS;
 
-      const abbr = (name: string) => name.slice(0, 3).toUpperCase();
+      // Fallback abbreviation when no explicit homeAbbr/awayAbbr is sent.
+      // 8 chars matches the Fleet team slug limit (ADR-0009) so both sides
+      // of the ecosystem agree on the same max length.
+      const abbr = (name: string) => name.slice(0, 8).toUpperCase();
 
       state = {
         ...createInitialState(),

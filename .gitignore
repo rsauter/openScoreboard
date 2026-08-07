@@ -1,7 +1,9 @@
 node_modules/
 .env
 dist/
-/claude_upload
+/dev-tools/collect-for-claude/
+/dev-tools/collect-for-claude.zip
+/dev-tools/collect-for-claude.tar.gz
 *.pid
 .server.pid
 *.code-workspace

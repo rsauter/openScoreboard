@@ -15,7 +15,7 @@
             <label class="label"><span class="label-text text-xs text-base-content/60">{{ t('gamestart.homeTeam') }}</span></label>
             <div class="flex gap-2 items-center">
               <input type="text" v-model="cfgHome" :placeholder="t('gamestart.teamPlaceholder')"
-                autocomplete="off" maxlength="3"
+                autocomplete="off" maxlength="8"
                 class="input input-bordered input-sm w-full uppercase" />
               <input type="color" v-model="cfgHomeColor"
                 class="w-9 h-9 rounded cursor-pointer border border-base-content/20 p-0.5 bg-base-100"
@@ -30,7 +30,7 @@
             <label class="label"><span class="label-text text-xs text-base-content/60">{{ t('gamestart.awayTeam') }}</span></label>
             <div class="flex gap-2 items-center">
               <input type="text" v-model="cfgAway" :placeholder="t('gamestart.teamPlaceholder')"
-                autocomplete="off" maxlength="3"
+                autocomplete="off" maxlength="8"
                 class="input input-bordered input-sm w-full uppercase" />
               <input type="color" v-model="cfgAwayColor"
                 class="w-9 h-9 rounded cursor-pointer border border-base-content/20 p-0.5 bg-base-100"
