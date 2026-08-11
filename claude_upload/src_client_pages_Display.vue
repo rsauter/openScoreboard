@@ -1,77 +1,85 @@
 <template>
   <div class="board-outer" :style="{ '--home-color': state?.homeColor || '#c0392b', '--away-color': state?.awayColor || '#2980b9' }">
-
-    <!-- Phase header (top) -->
-    <div class="phase-row">
-      <span class="phase-label">{{ state?.phase ? phaseLabel(state, t) : '---' }}</span>
-      <span class="conn-dot" :class="wsConnected ? 'connected' : 'disconnected'"></span>
-    </div>
-
-    <!-- Clock -->
-    <div class="clock-row">
-      <div class="clock-pill" :class="clockClass">
-        <span class="status-dot" :class="bulletClass"></span>
-        <span>{{ formattedClock }}</span>
-      </div>
-    </div>
-
-    <!-- Timeout / shootout -->
-    <div class="event-row">
-      <div class="event-pill timeout" v-if="state?.timeoutActive">
-        <span class="event-label">▶▶ Timeout</span>
-        <span class="event-detail">{{ timeoutTeam }} · {{ state ? fmt(state.timeoutRemaining) : '' }}</span>
-      </div>
-      <div class="event-pill shootout" v-else-if="state?.phase === 'shootout'">
-        <span class="event-label">{{ t('phase.shootout') }}</span>
-        <span class="event-score">{{ state?.homeShootout ?? 0 }} : {{ state?.awayShootout ?? 0 }}</span>
-      </div>
-    </div>
-
-    <!-- Score -->
-    <div class="score-wrap">
-      <div class="score-cluster">
+    <!-- Header row -->
+    <div class="header-row">
+      <div class="home-header">
         <span class="team-name">{{ state?.homeAbbr || state?.homeTeam || t('common.home') }}</span>
-        <div class="wedge home"></div>
-        <span class="score-slot home">{{ state?.homeScore ?? 0 }}</span>
-        <span class="score-sep">–</span>
-        <span class="score-slot away">{{ state?.awayScore ?? 0 }}</span>
-        <div class="wedge away"></div>
+      </div>
+      <div class="clock-area">
+        <div class="status-bullet" :class="bulletClass"></div>
+        <div class="clock" :class="clockClass">{{ formattedClock }}</div>
+      </div>
+      <div class="away-header">
         <span class="team-name">{{ state?.awayAbbr || state?.awayTeam || t('common.away') }}</span>
       </div>
     </div>
 
-    <!-- Penalties: home slot | home badge | away badge | away slot -->
-    <div class="pen-strip">
-      <div class="pen-zone">
-        <span class="pen-zone-label" v-if="homeSlotPenalties.length > 0">{{ t('operator.penalties') }}</span>
-        <div v-for="pen in homeSlotPenalties" :key="pen.id"
-          class="pen-chip" :class="{ 'pen-waiting': pen.status === 'waiting' }">
-          <span>#{{ pen.player || '?' }}</span>
-          <span class="pen-rem">{{ pen.status === 'waiting' ? '—' : fmt(pen.remaining) }}</span>
+    <!-- Score row -->
+    <div class="score-row">
+
+      <!-- Home score + slot penalties + badge penalties -->
+      <div class="home-score-area">
+        <span class="score-digit">{{ state?.homeScore ?? 0 }}</span>
+        <div class="pen-boxes-home">
+          <div v-if="homeSlotPenalties.length > 0" class="pen-box">
+            <div class="pen-header">— {{ t('operator.penalties') }} —</div>
+            <div v-for="pen in homeSlotPenalties" :key="pen.id"
+              class="pen-item" :class="{ 'pen-waiting': pen.status === 'waiting' }">
+              <span class="pen-num">#{{ pen.player || '?' }}</span>
+              <span class="pen-rem">{{ pen.status === 'waiting' ? '—' : fmt(pen.remaining) }}</span>
+            </div>
+          </div>
+          <div v-if="homeBadgePenalties.length > 0" class="pen-box pen-box-badge">
+            <div class="pen-header">— 10' —</div>
+            <div v-for="pen in homeBadgePenalties" :key="pen.id"
+              class="pen-item pen-badge" :class="{ 'pen-waiting': pen.status === 'waiting' }">
+              <span class="pen-num">#{{ pen.player || '?' }}</span>
+              <span class="pen-rem">{{ penLabel(pen.typeId) }}</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="badge-zone home">
-        <div v-for="pen in homeBadgePenalties" :key="pen.id"
-          class="badge-chip" :class="{ 'pen-waiting': pen.status === 'waiting' }">
-          <span class="badge-num">#{{ pen.player || '?' }}</span>
-          <span class="badge-label">{{ penLabel(pen.typeId) }}</span>
+
+      <!-- Center: Timeout / Shootout -->
+      <div class="score-center">
+        <div class="timeout-box" :class="{ active: state?.timeoutActive }">
+          <div class="timeout-label">▶▶ Timeout ⏱</div>
+          <div class="timeout-info">{{ timeoutTeam }} – {{ state ? fmt(state.timeoutRemaining) : '' }}</div>
+        </div>
+        <div class="shootout-box" v-if="state?.phase === 'shootout' && !state?.timeoutActive">
+          <div class="so-label">{{ t('phase.shootout') }}</div>
+          <div class="so-scores">{{ state?.homeShootout ?? 0 }} : {{ state?.awayShootout ?? 0 }}</div>
         </div>
       </div>
-      <div class="badge-zone away">
-        <div v-for="pen in awayBadgePenalties" :key="pen.id"
-          class="badge-chip" :class="{ 'pen-waiting': pen.status === 'waiting' }">
-          <span class="badge-num">#{{ pen.player || '?' }}</span>
-          <span class="badge-label">{{ penLabel(pen.typeId) }}</span>
+
+      <!-- Away score + slot penalties + badge penalties -->
+      <div class="away-score-area">
+        <span class="score-digit">{{ state?.awayScore ?? 0 }}</span>
+        <div class="pen-boxes-away">
+          <div v-if="awayBadgePenalties.length > 0" class="pen-box pen-box-badge">
+            <div class="pen-header">— 10' —</div>
+            <div v-for="pen in awayBadgePenalties" :key="pen.id"
+              class="pen-item pen-badge" :class="{ 'pen-waiting': pen.status === 'waiting' }">
+              <span class="pen-num">#{{ pen.player || '?' }}</span>
+              <span class="pen-rem">{{ penLabel(pen.typeId) }}</span>
+            </div>
+          </div>
+          <div v-if="awaySlotPenalties.length > 0" class="pen-box">
+            <div class="pen-header">— {{ t('operator.penalties') }} —</div>
+            <div v-for="pen in awaySlotPenalties" :key="pen.id"
+              class="pen-item" :class="{ 'pen-waiting': pen.status === 'waiting' }">
+              <span class="pen-num">#{{ pen.player || '?' }}</span>
+              <span class="pen-rem">{{ pen.status === 'waiting' ? '—' : fmt(pen.remaining) }}</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="pen-zone">
-        <span class="pen-zone-label" v-if="awaySlotPenalties.length > 0">{{ t('operator.penalties') }}</span>
-        <div v-for="pen in awaySlotPenalties" :key="pen.id"
-          class="pen-chip" :class="{ 'pen-waiting': pen.status === 'waiting' }">
-          <span>#{{ pen.player || '?' }}</span>
-          <span class="pen-rem">{{ pen.status === 'waiting' ? '—' : fmt(pen.remaining) }}</span>
-        </div>
-      </div>
+    </div>
+
+    <!-- Phase bar -->
+    <div class="phase-row">
+      <span class="phase-label">{{ state?.phase ? phaseLabel(state, t) : '---' }}</span>
+      <span class="conn-dot" :class="wsConnected ? 'connected' : 'disconnected'"></span>
     </div>
 
     <!-- Game ended -->
@@ -181,14 +189,12 @@ const formattedClock = computed(() =>
   state.value ? fmt(displayClockSeconds(state.value)) : '20:00'
 );
 
-// Only 'ended' and 'break' get a distinct clock-pill color on the light
-// theme — running/paused both read fine in the default dark pill, the
-// status dot already carries that distinction.
 const clockClass = computed(() => {
   if (!state.value) return '';
   if (state.value.phase === 'ended') return 'ended';
   if (state.value.phase === 'break') return 'break';
-  return '';
+  if (state.value.running) return 'running';
+  return 'paused';
 });
 
 const bulletClass = computed(() => {
@@ -204,12 +210,8 @@ const timeoutTeam = computed(() =>
   : state.value?.timeoutActive === 'away' ? state.value.awayTeam : ''
 );
 
-const homeSlotPenalties = computed(() => state.value?.penalties.filter(p => p.team === 'home' && p.displayMode === 'slot' && (p.status === 'running' || p.status === 'waiting')) ?? []);
-const awaySlotPenalties = computed(() => state.value?.penalties.filter(p => p.team === 'away' && p.displayMode === 'slot' && (p.status === 'running' || p.status === 'waiting')) ?? []);
-
-// Badge penalties (10' misconducts etc.) — one column per team, placed
-// directly beside that team's slot-penalty column, so which team a badge
-// belongs to is unambiguous from position alone.
+const homeSlotPenalties  = computed(() => state.value?.penalties.filter(p => p.team === 'home' && p.displayMode === 'slot'  && (p.status === 'running' || p.status === 'waiting')) ?? []);
+const awaySlotPenalties  = computed(() => state.value?.penalties.filter(p => p.team === 'away' && p.displayMode === 'slot'  && (p.status === 'running' || p.status === 'waiting')) ?? []);
 const homeBadgePenalties = computed(() => state.value?.penalties.filter(p => p.team === 'home' && p.displayMode === 'badge' && (p.status === 'running' || p.status === 'waiting')) ?? []);
 const awayBadgePenalties = computed(() => state.value?.penalties.filter(p => p.team === 'away' && p.displayMode === 'badge' && (p.status === 'running' || p.status === 'waiting')) ?? []);
 

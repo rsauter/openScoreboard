@@ -1,0 +1,12 @@
+node_modules/
+.env
+dist/
+/claude_upload
+*.pid
+.server.pid
+*.code-workspace
+.vscode/
+state.json
+settings.json
+state-archive/
+public/
