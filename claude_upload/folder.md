@@ -1,0 +1,106 @@
+# Project Structure: openScoreboard
+
+Generated on: 2026-07-22 14:51:31
+
+## File Tree
+
+- **dist/**
+  - **public/**
+    - **assets/**
+      - **display-8z34ytZQ.js**
+      - **en-MGmNPOFX.js**
+      - **Help-CkavWqdN.js**
+      - **horn-long-BZ79yP6E.mp3**
+      - **horn-short-B_gZBBCu.mp3**
+      - **Login-C19BhnnS.js**
+      - **logo_color_onlyhalo-B-iyJI9f.svg**
+      - **logo_color_standard-C9YIgdyd.svg**
+      - **main-BHE7MndF.css**
+      - **main-DGAm6uyv.js**
+      - **Operator-D-XHCvCd.js**
+      - **Settings-Yo_JlM_b.js**
+    - **display.html**
+    - **index.html**
+  - **src/**
+    - **server/**
+      - **fleetHeartbeat.js**
+    - **shared/**
+      - **types.js**
+  - **bootstrap.js**
+  - **server.js**
+- **public/**
+  - **assets/**
+    - **display-BxFUjOvj.js**
+    - **en-7KdQducm.js**
+    - **GameStart-D0UWBg4y.js**
+    - **logo_color_onlyhalo-B-iyJI9f.svg**
+    - **logo_color_standard-CQPTYun-.svg**
+    - **main-C-QQywU_.css**
+    - **main-iUlbNpW9.js**
+    - **Operator-BGPNIi2u.js**
+    - **Settings-B_TwgiRm.js**
+  - **display.html**
+  - **index.html**
+- **sports-templates/**
+  - **floorball-gf-single-nl-finals.yaml**
+  - **floorball-gf-single-tournament.yaml**
+  - **floorball-gf-single.yaml**
+  - **floorball-gf-tournament-finals.yaml**
+  - **floorball-gf-tournament.yaml**
+  - **floorball-kf-ejuniors.yaml**
+  - **floorball-kf-single.yaml**
+  - **floorball-kf-tournament-finals.yaml**
+  - **floorball-kf-tournament.yaml**
+  - **handball.yaml**
+  - **icehockey-nl-playoff.yaml**
+- **src/**
+  - **client/**
+    - **assets/**
+      - **horn-double.mp3**
+      - **horn-long.mp3**
+      - **horn-short.mp3**
+      - **logo_color_onlyhalo.svg**
+      - **logo_color_standard.svg**
+    - **components/**
+      - **StatusBar.vue**
+      - **TopNav.vue**
+    - **i18n/**
+      - **de.json**
+      - **en.json**
+      - **fr.json**
+      - **index.ts**
+      - **it.json**
+    - **pages/**
+      - **Display.vue**
+      - **GameStart.vue**
+      - **Help.vue**
+      - **Login.vue**
+      - **Operator.vue**
+      - **Settings.vue**
+    - **router/**
+      - **index.ts**
+    - **App.vue**
+    - **display.html**
+    - **display.ts**
+    - **index.html**
+    - **index.ts**
+    - **shared.ts**
+    - **style.css**
+    - **vite-env.d.ts**
+  - **server/**
+    - **fleetHeartbeat.ts**
+  - **shared/**
+    - **types.ts**
+- **ARCHITECTURE.md**
+- **bootstrap.ts**
+- **.env.example**
+- **.gitignore**
+- **LICENSE**
+- **license.json**
+- **package.json**
+- **README.md**
+- **server.ts**
+- **state.json**
+- **tsconfig.json**
+- **tsconfig.server.json**
+- **vite.config.ts**

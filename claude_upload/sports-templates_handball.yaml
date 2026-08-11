@@ -1,0 +1,30 @@
+slug: handball
+name: Handball
+isDefault: false
+
+periods:
+  count: 2
+  durationMinutes: 30
+  breakMinutes: 15
+
+overtime:
+  enabled: true
+  periods: 2
+  durationMinutes: 5
+  suddenDeath: false
+  breakMinutes: 5
+
+shootout:
+  enabled: true
+  breakMinutes: 3
+
+penalties:
+  maxActiveSlots: 1
+  queueEnabled: false
+  queueOrderEditable: false
+  types:
+    - id: suspension
+      label: "2 Min"
+      durationSeconds: 120
+      displayMode: slot
+      clearableByGoal: false
