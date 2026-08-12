@@ -39,6 +39,7 @@
   "phase.overtime_n": "Tempi supplementari {n}",
   "phase.shootout": "Rigori",
   "phase.ended": "Partita terminata",
+  "display.tapToEnableSound": "Tocca per attivare l'audio",
   "dashboard.title": "Panoramica partite",
   "dashboard.refresh": "Aggiorna",
   "dashboard.noMatches": "Nessuna partita trovata",

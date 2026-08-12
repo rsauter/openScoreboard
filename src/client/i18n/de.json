@@ -39,6 +39,7 @@
   "phase.overtime_n": "Verlängerung {n}",
   "phase.shootout": "Penalty / Shootout",
   "phase.ended": "Spiel beendet",
+  "display.tapToEnableSound": "Antippen für Ton",
   "dashboard.title": "Match Übersicht",
   "dashboard.refresh": "Aktualisieren",
   "dashboard.noMatches": "Keine Matches gefunden",

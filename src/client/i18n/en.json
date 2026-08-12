@@ -39,6 +39,7 @@
   "phase.overtime_n": "Overtime {n}",
   "phase.shootout": "Shootout",
   "phase.ended": "Game over",
+  "display.tapToEnableSound": "Tap to enable sound",
   "dashboard.title": "Match Overview",
   "dashboard.refresh": "Refresh",
   "dashboard.noMatches": "No matches found",

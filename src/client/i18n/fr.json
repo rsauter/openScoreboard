@@ -39,6 +39,7 @@
   "phase.overtime_n": "Prolongation {n}",
   "phase.shootout": "Tirs au but",
   "phase.ended": "Match terminé",
+  "display.tapToEnableSound": "Toucher pour activer le son",
   "dashboard.title": "Vue des matchs",
   "dashboard.refresh": "Actualiser",
   "dashboard.noMatches": "Aucun match trouvé",
