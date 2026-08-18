@@ -385,6 +385,15 @@ function loadYamlTemplates(): void {
         continue;
       }
 
+      // A malformed single template must never take the whole server down
+      // with it (same fail-soft principle as the duplicate-slug check
+      // above) — skip and log instead of letting `undefined.localeCompare`
+      // crash the sort below and kill the process.
+      if (!data.name || typeof data.name !== 'string') {
+        console.error(`[ERROR] Template "${file}" has no valid "name" field — skipping.`);
+        continue;
+      }
+
       const tmpl: SportsTemplate = {
         id:              results.length + 1,   // Stable order-based ID (no DB)
         slug,
@@ -422,11 +431,14 @@ function loadYamlTemplates(): void {
     }
   }
 
-  // Sort: default first, then alphabetically
+  // Sort: default first, then alphabetically. The `?? ''` fallback is a
+  // second line of defense — with the "name" field validated above this
+  // shouldn't be needed, but a broken sort must never be able to crash
+  // the whole server over one bad template.
   results.sort((a, b) => {
     if (a.isDefault && !b.isDefault) return -1;
     if (!a.isDefault && b.isDefault) return  1;
-    return a.name.localeCompare(b.name);
+    return (a.name ?? '').localeCompare(b.name ?? '');
   });
 
   // Re-assign IDs after sort

@@ -61,6 +61,8 @@ mkdir -p "$STAGE_DIR/$RELEASE_NAME"
 cp -R dist "$STAGE_DIR/$RELEASE_NAME/dist"
 cp package.json package-lock.json "$STAGE_DIR/$RELEASE_NAME/"
 cp -R sports-templates "$STAGE_DIR/$RELEASE_NAME/sports-templates"
+cp dev-tools/openscoreboard.service.template "$STAGE_DIR/$RELEASE_NAME/openscoreboard.service.template"
+cp dev-tools/start-display-kiosk.sh "$STAGE_DIR/$RELEASE_NAME/start-display-kiosk.sh"
 
 cat > "$STAGE_DIR/$RELEASE_NAME/RELEASE_INFO.txt" <<EOF
 openScoreboard release
