@@ -247,7 +247,23 @@
                   class="flex items-center gap-2 bg-warning/10 border border-warning/30 rounded px-2 py-1 text-xs">
                   <span class="badge badge-warning badge-xs">{{ penLabel(pen.typeId) }}</span>
                   <span class="flex-1">#{{ pen.player || '?' }}</span>
-                  <span class="text-warning font-mono">{{ fmt(pen.remaining) }}</span>
+                  <span class="text-warning font-mono">
+                    <input v-if="!gameState?.running && editingPenaltyId === pen.id"
+                      :ref="el => { if (el) penaltyInputRefs[pen.id] = el as HTMLInputElement }"
+                      type="text"
+                      v-model="penaltyEditValue"
+                      @blur="onPenaltyTimeBlur(pen.id)"
+                      @keydown.enter="onPenaltyTimeEnter(pen.id)"
+                      @keydown.escape="cancelPenaltyEdit"
+                      class="input input-ghost text-xs font-mono text-warning text-center w-14 p-0 border-0 border-b-2 border-warning focus:outline-none"
+                    />
+                    <span v-else
+                      :class="{ 'cursor-pointer hover:text-warning/70 underline decoration-dotted': !gameState?.running }"
+                      @click="startPenaltyEdit(pen)"
+                      :title="!gameState?.running ? t('operator.timeAdjustTitle') : ''">
+                      {{ fmt(pen.remaining) }}
+                    </span>
+                  </span>
                   <button class="btn btn-ghost btn-xs text-base-content/40 hover:text-error" @click="removePenalty(pen.id)">✕</button>
                 </div>
               </div>
