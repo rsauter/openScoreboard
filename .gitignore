@@ -14,3 +14,4 @@ state-archive/
 license.json
 device-secret.json
 public/
+/releases/
