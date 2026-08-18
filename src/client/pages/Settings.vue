@@ -36,6 +36,23 @@
       </div>
     </div>
 
+    <!-- ─── Horn output ──────────────────────────────────────────────────── -->
+    <div class="card bg-base-200 shadow">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">{{ t('settings.hornOutput.title') }}</h2>
+        <p class="text-xs opacity-60">{{ t('settings.hornOutput.description') }}</p>
+        <div class="flex flex-wrap gap-3">
+          <button v-for="opt in hornOutputOptions" :key="opt" class="btn btn-lg gap-2"
+            :class="hornOutput === opt ? 'btn-primary' : 'btn-ghost border border-base-content/20'"
+            :disabled="hornOutputSaving"
+            @click="setHornOutput(opt)">
+            {{ t(`settings.hornOutput.${opt}`) }}
+            <span v-if="hornOutput === opt" class="text-xs opacity-60">✓</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Finished games (archive) ─────────────────────────────────────── -->
     <div class="card bg-base-200 shadow">
       <div class="card-body gap-4">
@@ -503,10 +520,52 @@ async function startPairing(): Promise<void> {
   }
 }
 
+// ─── Horn output ───────────────────────────────────────────────────────────
+// Which client(s) actually sound the horn — set once per venue/device, not
+// per game. Undefined until loaded; buttons stay disabled while unresolved
+// so a click can't fire against a still-unknown current value.
+type HornOutput = 'operator' | 'display' | 'both';
+const hornOutputOptions: HornOutput[] = ['operator', 'display', 'both'];
+const hornOutput       = ref<HornOutput | null>(null);
+const hornOutputSaving = ref(false);
+
+async function loadHornOutput(): Promise<void> {
+  try {
+    const res = await fetch('/api/settings/horn-output', { headers: authHeaders() });
+    if (!res.ok) throw new Error('Request failed');
+    const data = await res.json() as { hornOutput: HornOutput };
+    hornOutput.value = data.hornOutput;
+  } catch {
+    hornOutput.value = 'both'; // matches the server's own fallback default
+  }
+}
+
+async function setHornOutput(value: HornOutput): Promise<void> {
+  if (value === hornOutput.value || hornOutputSaving.value) return;
+  const previous = hornOutput.value;
+  hornOutput.value = value; // optimistic
+  hornOutputSaving.value = true;
+  try {
+    const res = await fetch('/api/settings/horn-output', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body:    JSON.stringify({ hornOutput: value }),
+    });
+    if (!res.ok) throw new Error('Request failed');
+    showToast(t('settings.hornOutput.success'), 'success');
+  } catch {
+    hornOutput.value = previous; // revert
+    showToast(t('settings.hornOutput.saveError'), 'error');
+  } finally {
+    hornOutputSaving.value = false;
+  }
+}
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
   loadArchivedStates();
   loadLicense();
+  loadHornOutput();
 });
 
 onUnmounted(() => {

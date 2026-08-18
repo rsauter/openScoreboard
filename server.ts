@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { parse as parseYaml } from 'yaml';
 import { initFleetHeartbeat, FLEET_ENDPOINT, FLEET_SECRET } from './src/server/fleetHeartbeat';
 import { getOrCreateDeviceSecret } from './src/server/deviceSecret';
-import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo, LicenseInfo, SubscriptionStatus, PairingInitiateResponse, PairingStatusResponse } from './src/shared/types';
+import type { GameState, Penalty, PenaltyType, PenaltySettings, CompanionType, ClientCommand, ServerMessage, SportsTemplate, ArchivedStateInfo, LicenseInfo, SubscriptionStatus, PairingInitiateResponse, PairingStatusResponse, HornOutput } from './src/shared/types';
 import { defaultLicenseInfo } from './src/shared/types';
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
@@ -48,6 +48,10 @@ const DEFAULT_PIN   = '0000';
 interface Settings {
   pin?: string;
   fleetInstanceId?: string;
+  /** Which client(s) should sound the horn — see HornOutput in src/shared/types.ts.
+   *  Undefined (fresh/legacy installs) resolves to 'both' via resolveHornOutput(),
+   *  matching the previous unconfigurable behavior — non-breaking default. */
+  hornOutput?: HornOutput;
 }
 
 function loadSettings(): Settings {
@@ -82,6 +86,30 @@ export function isDefaultPin(): boolean {
   if (process.env.OPERATOR_PIN) return false;
   return true;
 }
+
+/** Resolves the current horn-output setting, defaulting to 'both' when
+ *  unset (fresh installs and installs from before this setting existed). */
+function resolveHornOutput(): HornOutput {
+  return loadSettings().hornOutput ?? 'both';
+}
+
+/** GET /api/settings/horn-output — current horn-output setting for the Settings UI. */
+app.get('/api/settings/horn-output', requireAuth, (_req, res) => {
+  res.json({ hornOutput: resolveHornOutput() });
+});
+
+/** POST /api/settings/horn-output — body: { hornOutput: 'operator' | 'display' | 'both' } */
+app.post('/api/settings/horn-output', requireAuth, (req, res) => {
+  const { hornOutput } = req.body as { hornOutput?: string };
+  if (hornOutput !== 'operator' && hornOutput !== 'display' && hornOutput !== 'both') {
+    res.status(400).json({ error: 'hornOutput must be one of: operator, display, both' });
+    return;
+  }
+  const settings = loadSettings();
+  settings.hornOutput = hornOutput;
+  saveSettings(settings);
+  res.json({ hornOutput });
+});
 
 // In-memory token store (survives process lifetime, resets on restart)
 const validTokens = new Set<string>();
@@ -784,7 +812,7 @@ function startTick(): void {
       if (state.timeoutRemaining <= 0) {
         state.timeoutActive    = null;
         state.timeoutRemaining = 30;
-        broadcast({ type: 'BUZZER', reason: 'timeout' });
+        broadcast({ type: 'BUZZER', reason: 'timeout', hornOutput: resolveHornOutput() });
       }
       broadcast({ type: 'STATE', state });
       return;
@@ -813,7 +841,7 @@ function startTick(): void {
         const chainAt      = penType?.chainSeconds ?? null;
         const nowClearable = chainAt !== null && rem <= chainAt ? false : p.clearableByGoal;
         if (rem <= 0 && p.remaining > 0) {
-          broadcast({ type: 'BUZZER', reason: 'penalty', id: p.id });
+          broadcast({ type: 'BUZZER', reason: 'penalty', id: p.id, hornOutput: resolveHornOutput() });
           return { ...p, remaining: 0, status: 'expired' as const, clearableByGoal: nowClearable };
         }
         return { ...p, remaining: rem, clearableByGoal: nowClearable };
@@ -831,7 +859,7 @@ function startTick(): void {
     if (state.timeRemaining <= 0 && state.running) {
       state.running  = false;
       state.lastTick = null;
-      broadcast({ type: 'BUZZER', reason: 'period' });
+      broadcast({ type: 'BUZZER', reason: 'period', hornOutput: resolveHornOutput() });
     }
 
     broadcast({ type: 'STATE', state });
@@ -1108,7 +1136,7 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
     }
 
     case 'BUZZER_MANUAL':
-      broadcast({ type: 'BUZZER', reason: 'manual' });
+      broadcast({ type: 'BUZZER', reason: 'manual', hornOutput: resolveHornOutput() });
       break;
   }
 

@@ -18,6 +18,8 @@ No database. No Docker. Just `npm install && npm start`.
 - Multilingual UI (DE / FR / IT / EN)
 - Integrated manual with usage instructions (`/help`)
 - TV/projector display output (`/display.html`)
+- Horn/buzzer sound, configurable to play on the Operator device, the
+  Display device, or both
 
 ## Quick Start
 
@@ -118,6 +120,19 @@ Mark a template as `isDefault: true` to pre-select it in the GameStart view.
 | `/display.html` | TV/projector output |
 | `/settings` | Language and display preferences |
 | `/help` | Integrated manual |
+
+## Sound / Horn Output
+
+The horn (period end, timeout end, manual buzzer) can play on the Operator
+device, the Display device, or both — set under **Settings → Horn output**.
+Actual volume is controlled per device via its own hardware (e.g. a 3.5mm
+jack into the venue's mixing desk), not by the app.
+
+> **Unattended Display devices** (a Pi kiosk or a notebook feeding a beamer
+> with nobody there to interact with it) need Chrome/Chromium started with
+> `--autoplay-policy=no-user-gesture-required`, or the browser will silently
+> block the very first horn attempt until someone taps the screen once. See
+> [ARCHITECTURE.md](./ARCHITECTURE.md) for exact startup commands per OS.
 
 ## Crash Recovery
 

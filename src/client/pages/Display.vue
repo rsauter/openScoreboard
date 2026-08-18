@@ -76,6 +76,13 @@
 
     <!-- Game ended -->
     <div class="ended-banner" v-if="state?.phase === 'ended'">{{ t('phase.ended') }}</div>
+
+    <!-- Audio unlock hint — only shown if the browser actually blocked the
+         horn (see playBuzzer()). Non-blocking: the scoreboard underneath
+         stays fully visible and usable even if nobody ever taps this. -->
+    <div class="audio-hint" v-if="audioBlocked" @click="unlockAudio">
+      🔇 {{ t('display.tapToEnableSound') }}
+    </div>
   </div>
 </template>
 
@@ -91,6 +98,10 @@ import de from '../i18n/de.json';
 import fr from '../i18n/fr.json';
 import it from '../i18n/it.json';
 import en from '../i18n/en.json';
+
+// Same horn assets as Operator.vue (src/client/assets/).
+import hornShortUrl from '../assets/horn-short.mp3';
+import hornLongUrl  from '../assets/horn-long.mp3';
 
 const locales: Record<string, Record<string, string>> = { de, fr, it, en };
 
@@ -161,11 +172,70 @@ function connectWebSocket(): void {
   });
   ws.addEventListener('error', () => { ws?.close(); });
   ws.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data) as { type: string; state?: GameState };
+    const message = JSON.parse(event.data) as {
+      type: string;
+      state?: GameState;
+      reason?: 'period' | 'timeout' | 'penalty' | 'manual';
+      hornOutput?: 'operator' | 'display' | 'both';
+    };
     if (message.type === 'STATE' && message.state) {
       state.value = message.state;
     }
+    if (message.type === 'BUZZER' && message.reason) {
+      playBuzzer(message.reason, message.hornOutput);
+    }
   });
+}
+
+// ── Horn ──────────────────────────────────────────────────────────────────────
+// Mirrors Operator.vue's horn logic. The horn is broadcast to every
+// connected client; each client only plays it if hornOutput includes its own
+// role, configured once per venue in Settings (see ARCHITECTURE.md). The display can sit anywhere
+// — Pi HDMI output or a separate notebook feeding a beamer — and is wired
+// into the venue's mixing desk (3.5mm jack) with its own hardware volume,
+// same as the operator notebook. No app-side volume control needed.
+const hornShort = new Audio(hornShortUrl);
+const hornLong  = new Audio(hornLongUrl);
+
+// Only true once the browser has actually rejected an unmuted play() call —
+// i.e. no interaction has happened yet on this page/tab. Chrome (and most
+// Chromium-based kiosks) remember any user gesture on the document for its
+// whole lifetime, so a single tap anywhere is enough to unlock it for good.
+// A Chromium kiosk started with --autoplay-policy=no-user-gesture-required
+// never blocks in the first place, so this hint simply never appears there.
+//
+// IMPORTANT: this can only ever become true if playBuzzer() actually attempts
+// play() — which it deliberately skips whenever hornOutput excludes 'display'.
+// A display that isn't supposed to make sound must never show this hint to
+// the audience on the public-facing video wall.
+const audioBlocked = ref(false);
+
+function playBuzzer(reason: 'period' | 'timeout' | 'penalty' | 'manual', hornOutput?: 'operator' | 'display' | 'both') {
+  // Undefined hornOutput (shouldn't happen once the server sends it, but
+  // guards older cached bundles during a rollout) falls back to the
+  // previous unconfigurable behavior: play everywhere.
+  if (hornOutput && hornOutput !== 'display' && hornOutput !== 'both') return;
+  try {
+    if (reason === 'period' || reason === 'manual') {
+      hornLong.currentTime = 0;
+      const p = hornLong.play();
+      p?.then(() => { audioBlocked.value = false; }).catch(() => { audioBlocked.value = true; });
+    } else if (reason === 'timeout') {
+      hornShort.currentTime = 0;
+      const p = hornShort.play();
+      p?.then(() => { audioBlocked.value = false; }).catch(() => { audioBlocked.value = true; });
+    }
+    // penalty: intentionally silent — only relevant to bench, not the whole hall.
+  } catch {
+    audioBlocked.value = true;
+  }
+}
+
+function unlockAudio(): void {
+  // The click itself is the user gesture Chrome needs — nothing else to do.
+  // Play a zero-length no-op to consume/confirm it, then hide the hint.
+  hornShort.play().then(() => { hornShort.pause(); hornShort.currentTime = 0; }).catch(() => { /* still blocked, try again on next tap */ });
+  audioBlocked.value = false;
 }
 
 onMounted(() => { connectWebSocket(); });
