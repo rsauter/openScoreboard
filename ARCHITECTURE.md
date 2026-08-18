@@ -84,6 +84,16 @@ so the server can unambiguously assign the correct penalty configuration
 period count/duration was the original (error-prone) approach and was
 discarded.
 
+A template missing a valid `name` field is skipped the same way (logged,
+not fatal) — a single malformed YAML file must never take the whole server
+down with it. This was previously not the case: `loadYamlTemplates()`'s
+final sort called `.localeCompare()` directly on `name`, so one bad
+template crashed the entire process on every restart (systemd's
+auto-restart loop just kept re-crashing it). Found via a real deploy where
+one `sports-templates/*.yaml` file ended up without a usable `name` at
+runtime; root cause of *why* that file lacked one wasn't conclusively
+identified, but the fix makes the failure mode itself harmless either way.
+
 ### `PROJECT_ROOT` fix for dev vs. prod paths
 In dev mode (`tsx`, run from the project root), `__dirname` points to the
 project root, but in the production build (`dist/server.js`) it points to
@@ -208,10 +218,15 @@ at `/display.html`) rather than from a kiosk running locally on the Pi
 itself. Under that pattern, a Pi 3 with 1 GB RAM running headless (no
 desktop environment) is sufficient — see memory data below.
 
-If a future requirement needs a Chromium kiosk running directly on the
-Pi (e.g. no separate TV/browser device available), the Pi 4 / 2 GB
-recommendation should be re-evaluated specifically for that scenario, since
-Chromium itself is the memory-heavy component, not openScoreboard.
+If a future requirement needs a Chromium kiosk running directly on the Pi
+(e.g. no separate TV/browser device available), it does **not** require
+switching to a full Desktop image or the Pi 4 / 2 GB recommendation below —
+see `dev-tools/start-display-kiosk.sh`, which runs a bare `xinit` X session
+with Chromium as its only application (no window manager, no login/desktop
+session at all) directly on top of Lite. This is far lighter than a full
+desktop environment; the memory comparison below is about Desktop vs. Lite
+as the base OS, which is a separate question from whether a full desktop
+environment is running at all.
 
 #### Raspberry Pi OS: Lite vs. Desktop (memory comparison)
 
@@ -253,14 +268,38 @@ dedicated scoreboard Pi.
   imaging via Raspberry Pi Imager's advanced options).
 - Autostart/crash recovery: a systemd service
   (`/etc/systemd/system/openscoreboard.service`) with `Restart=on-failure`
-  runs `node dist/server.js` from the project's `WorkingDirectory`. Starts
-  automatically on boot (`enabled`), restarts automatically on crash, and
-  keeps running independent of any SSH session. Confirmed working across a
-  full power-cycle (`sudo reboot`) including correct `state.json` recovery
-  of an in-progress game.
+  runs `node dist/bootstrap.js` from the project's `WorkingDirectory` — see
+  `dev-tools/openscoreboard.service.template`. **Not `node dist/server.js`
+  directly:** `bootstrap.ts` exists specifically to load `.env` before
+  `server.ts`'s imports run (dynamic `import('./server')`, see the comment
+  in `bootstrap.ts`); starting `server.js` directly silently skips that,
+  so any `.env`-provided variable (e.g. `FLEET_HEARTBEAT_URL`) never
+  reaches the process. An earlier manually-created systemd unit on the
+  reference Pi had this wrong for some time — found when a from-scratch
+  redeploy exposed it. Starts automatically on boot (`enabled`), restarts
+  automatically on crash, and keeps running independent of any SSH
+  session. Confirmed working across a full power-cycle (`sudo reboot`)
+  including correct `state.json` recovery of an in-progress game.
 - Deployment/update flow on the Pi: `git pull && npm install && npm run
   build && sudo systemctl restart openscoreboard` — no reboot needed for a
-  plain code update.
+  plain code update. **Superseded by the packaged-release flow below** for
+  day-to-day deploys; this git-based flow remains useful for one-off manual
+  fixes directly on the device.
+- **Packaged-release deploy (preferred over `git pull` on the Pi):** the Pi
+  never runs `git` at all. `dev-tools/package-release.sh` (run on the dev
+  machine) builds the app and tars up exactly what production needs —
+  `dist/`, `package.json`, `package-lock.json`, `sports-templates/` — into
+  `releases/<name>.tar.gz`. Per-installation runtime/data files
+  (`settings.json`, `license.json`, `state.json`, `device-secret.json`,
+  `state-archive/`) are never part of the tarball in the first place, so
+  deploying can't clobber a venue's data — there's nothing to "exclude" at
+  deploy time, it's excluded by construction at packaging time.
+  `dev-tools/deploy-release.sh` lives permanently on the Pi and extracts a
+  transferred tarball directly on top of the existing install, then runs
+  `npm ci --omit=dev` and restarts the systemd service.
+  `dev-tools/deploy-to-pi.sh <user>@<host>` on the dev machine chains
+  package → `scp` → remote deploy into one command. See the scripts'
+  header comments for exact usage.
 - **If the Display device is unattended (no touchscreen/mouse to tap the
   autoplay hint) and `hornOutput` includes it:** start Chrome/Chromium with
   `--autoplay-policy=no-user-gesture-required` so the horn plays
@@ -269,7 +308,22 @@ dedicated scoreboard Pi.
   in a regular browser on a separate notebook feeding the beamer via HDMI —
   the flag is what makes it unattended-safe, `--kiosk` alone only controls
   fullscreen chrome (no relation to sound).
-  - **Pi / Linux kiosk:**
+  - **Pi / Linux kiosk (headless Lite install, no desktop environment):**
+    `dev-tools/start-display-kiosk.sh` runs a bare `xinit` X session with
+    Chromium as its only application — not a full desktop, no window
+    manager, no login session — needed precisely because Pi OS Lite (the
+    documented/recommended base — see "Raspberry Pi" above) has no X
+    server running at all to attach a plain `chromium-browser --kiosk ...`
+    command to over SSH. One-time OS prerequisite (a fresh Lite install has
+    none of this): `sudo apt install --no-install-recommends xserver-xorg
+    xinit chromium-browser`. Every release keeps the script itself current
+    on the device (see "Packaged-release deploy" below); trigger it
+    remotely once the board should go live:
+    `ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/start-display-kiosk.sh'`
+  - **Linux with a desktop environment already running** (X or Wayland,
+    e.g. a notebook, or a Pi deliberately set up with Desktop instead of
+    Lite): the simpler direct command works, since a display to attach to
+    already exists —
     `chromium-browser --kiosk --autoplay-policy=no-user-gesture-required
     --noerrdialogs --disable-infobars http://localhost:3000/display.html`
   - **Windows notebook:**

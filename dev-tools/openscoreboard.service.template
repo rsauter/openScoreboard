@@ -1,0 +1,14 @@
+[Unit]
+Description=openScoreboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=__PROJECT_DIR__
+ExecStart=/usr/bin/node dist/bootstrap.js
+Restart=on-failure
+User=__USER__
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
