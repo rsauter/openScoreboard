@@ -242,6 +242,25 @@
     z-index: 10;
   }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── Audio-Unlock-Hint ──
+     Non-blocking, small corner in the lower right; appears only if the
+     browser has actually blocked the horn sound (autoplay policy).
+     Disappears permanently after the first click anywhere on the page.  */
+  .audio-hint {
+    position: fixed;
+    bottom: 2vh;
+    right: 2vw;
+    background: rgba(22,24,29,0.85);
+    color: #fdcb6e;
+    border-radius: 999px;
+    padding: 1vh 2vw;
+    font-size: clamp(14px, 1.3vw, 22px);
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 20;
+    animation: pulse 1.6s infinite;
+  }
 </style>
 </head>
 <body>

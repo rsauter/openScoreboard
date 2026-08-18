@@ -145,10 +145,20 @@ export interface GameState {
 
 // #region ─── WebSocket Messages Server → Client ──────────────────────────────────────
 
+/** Which physical device(s) should actually sound the horn.
+ *  Configured once per venue/device in Settings, not per game — the horn is
+ *  broadcast to every connected client regardless, but each client only
+ *  attempts playback if this setting includes its own role. Crucially, a
+ *  client that's excluded never even calls Audio.play(), so it can never
+ *  trigger (or show a hint for) the browser's autoplay block — that hint
+ *  must never appear on a public-facing display that isn't meant to make
+ *  sound at all. */
+export type HornOutput = 'operator' | 'display' | 'both';
+
 /** Messages sent from the server to all connected clients. */
 export type ServerMessage =
   | { type: 'STATE'; state: GameState }
-  | { type: 'BUZZER'; reason: 'period' | 'timeout' | 'penalty' | 'manual'; id?: number };
+  | { type: 'BUZZER'; reason: 'period' | 'timeout' | 'penalty' | 'manual'; id?: number; hornOutput: HornOutput };
 
 // #endregion
 
@@ -235,7 +245,7 @@ export type SubscriptionStatus = 'unlicensed' | 'active' | 'expired';
  *  Written only by the pairing process or by the one-time migration on first
  *  startup. Never written by the Settings UI — read-only from the app's perspective.
  *  fleetInstanceId is generated once on first boot and never changes,
- *  regardless of licensing state (see ADR-00XX). */
+ *  regardless of licensing state (see ARCHITECTURE.md). */
 export interface LicenseInfo {
   fleetInstanceId:    string;
   licenseKey:         string | null;

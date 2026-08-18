@@ -607,6 +607,7 @@ function connectWebSocket() {
       type: string;
       state?: GameState;
       reason?: 'period' | 'timeout' | 'penalty' | 'manual';
+      hornOutput?: 'operator' | 'display' | 'both';
     };
     if (message.type === 'AUTH_ERROR') {
       // Token rejected — clear it and redirect to login
@@ -626,7 +627,7 @@ function connectWebSocket() {
       }
     }
     if (message.type === 'BUZZER' && message.reason) {
-      playBuzzer(message.reason);
+      playBuzzer(message.reason, message.hornOutput);
     }
   });
 }
@@ -639,10 +640,16 @@ function sendCmd(cmd: ClientCommand['cmd'], extra: Partial<ClientCommand> = {}) 
 // ── Horn ──────────────────────────────────────────────────────────────────────
 // Played directly in the operator's browser — the operator notebook is connected
 // to the venue's mixing desk with its own level, so this drives the hall PA.
+// hornOutput (set in Settings, see ARCHITECTURE.md) decides whether the operator itself
+// should sound at all — e.g. a setup where only the display's device is wired
+// into the PA and the operator notebook should stay silent.
 const hornShort = new Audio(hornShortUrl);
 const hornLong  = new Audio(hornLongUrl);
 
-function playBuzzer(reason: 'period' | 'timeout' | 'penalty' | 'manual') {
+function playBuzzer(reason: 'period' | 'timeout' | 'penalty' | 'manual', hornOutput?: 'operator' | 'display' | 'both') {
+  // Undefined hornOutput (older cached bundle mid-rollout) falls back to the
+  // previous unconfigurable behavior: play everywhere.
+  if (hornOutput && hornOutput !== 'operator' && hornOutput !== 'both') return;
   try {
     if (reason === 'period' || reason === 'manual') {
       hornLong.currentTime = 0;

@@ -31,6 +31,49 @@ planned matches, database-backed template management.
 
 ## Key technical decisions (as of chore/init)
 
+### Horn broadcasts to every connected client, configurable per role
+The server broadcasts `{ type: 'BUZZER', reason, hornOutput }` over the same
+WebSocket used for `STATE` — every connected client (Operator, every open
+Display instance) receives it regardless of auth status, since `broadcast()`
+iterates all sockets unconditionally. `hornOutput` (`'operator' | 'display' |
+'both'`, set once per venue/device in **Settings**, not per game) travels
+with the message itself, resolved fresh from `settings.json` at broadcast
+time — changing it in Settings takes effect on the very next horn, no need
+to push a live config-changed event to already-connected clients.
+
+Each client checks `hornOutput` **before** attempting `Audio.play()`, not
+after. This matters because of the next point:
+
+**Browser autoplay policy.** Chrome (and Chromium-based kiosks) blocks
+unmuted `Audio.play()` until the page has received at least one user
+gesture. The Operator gets this "for free" via PIN login/button clicks; the
+Display is a passive, unattended view and never gets one on its own.
+Solution: `playBuzzer()` tries to play regardless, and if the *first*
+attempt is rejected, a small non-blocking corner hint ("Tap to enable
+sound") appears — any click anywhere on the page unlocks it permanently for
+that browser tab (Chrome remembers a gesture for the page's whole lifetime).
+Crucially, if `hornOutput` excludes a client's own role, that client never
+calls `play()` at all — so a Display that isn't supposed to make sound can
+never show this hint to the audience on the public-facing video wall, and a
+muted Operator setup won't try to play either.
+
+**For an unattended Display (Pi kiosk or a notebook feeding a beamer with
+nobody there to tap anything), the tap-hint is not a usable unlock
+mechanism** — there's no touchscreen/mouse. The real fix is starting
+Chrome/Chromium with:
+
+```
+--autoplay-policy=no-user-gesture-required
+```
+
+With this flag, the browser never blocks in the first place, so the hint
+simply never appears — no interaction needed. See "Setup notes" below for
+concrete startup commands. This flag has no effect on the hint's absence
+when `hornOutput` already excludes the Display; the two mechanisms address
+different problems (whether the client should try to play at all, vs.
+whether the browser lets a client that *should* play actually do so
+unattended).
+
 ### Templates matched via `slug`, not `name` or period configuration
 `SportsTemplate.slug` is the stable, unique identifier (sourced from the
 YAML field `slug`, falling back to the filename without extension). The
@@ -218,6 +261,29 @@ dedicated scoreboard Pi.
 - Deployment/update flow on the Pi: `git pull && npm install && npm run
   build && sudo systemctl restart openscoreboard` — no reboot needed for a
   plain code update.
+- **If the Display device is unattended (no touchscreen/mouse to tap the
+  autoplay hint) and `hornOutput` includes it:** start Chrome/Chromium with
+  `--autoplay-policy=no-user-gesture-required` so the horn plays
+  automatically from the first buzzer, with no interaction needed. This
+  matters regardless of whether Chromium runs as a local kiosk on the Pi or
+  in a regular browser on a separate notebook feeding the beamer via HDMI —
+  the flag is what makes it unattended-safe, `--kiosk` alone only controls
+  fullscreen chrome (no relation to sound).
+  - **Pi / Linux kiosk:**
+    `chromium-browser --kiosk --autoplay-policy=no-user-gesture-required
+    --noerrdialogs --disable-infobars http://localhost:3000/display.html`
+  - **Windows notebook:**
+    `"C:\Program Files\Google\Chrome\Application\chrome.exe"
+    --autoplay-policy=no-user-gesture-required --kiosk
+    http://<pi-host>:3000/display.html`
+  - **macOS notebook:** Chrome's `--kiosk` is unreliable on macOS (long-
+    standing Chromium issue, not specific to this project) — start without
+    it and switch to fullscreen manually (Cmd+Ctrl+F) instead:
+    `open -n -a "Google Chrome" --args
+    --autoplay-policy=no-user-gesture-required
+    http://<pi-host>:3000/display.html`. The `-n` forces a genuinely new
+    Chrome process — if Chrome is already running, `open -a` just
+    refocuses the existing window and silently ignores the new `--args`.
 - microSD card note: a brand-new card failed `Raspberry Pi Imager`'s
   write-verification twice in a row when written via a USB-C dongle's SD
   slot. Reformatting the card (Disk Utility on macOS, MS-DOS/FAT, Master
