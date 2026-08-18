@@ -569,14 +569,13 @@ function promoteQueue(team: 'home' | 'away'): void {
   }
 }
 
+// Starts the next penalty in a 2+2 chain (the second 2-min slot) once the
+// first 2-min slot expires or is cleared. Badge penalties (misconduct) are
+// never 'waiting' — they run in parallel with their companion from the start
+// — so this only ever applies to a chained slot2.
 function unblockWaiting(expiredId: number): void {
-  const badge = state.penalties.find(
-    p => p.blockedByPenaltyId === expiredId && p.status === 'waiting'
-  );
-  if (badge) { badge.status = 'running'; badge.remaining = calcRemaining(badge.duration); }
-
   const chain = state.penalties.find(
-    p => p.blockedByPenaltyId === expiredId && p.status === 'waiting' && p.parentPenaltyId !== null
+    p => p.blockedByPenaltyId === expiredId && p.status === 'waiting'
   );
   if (chain) { chain.status = 'running'; chain.remaining = calcRemaining(chain.duration); }
 }
@@ -1038,8 +1037,11 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
       const mainId    = makeId();
       const isSlot    = !isBadge;
       const slotsFull = isSlot && getActiveSlotCount(team) >= settings.maxActiveSlots;
+      // A badge penalty (e.g. misconduct) always starts running immediately,
+      // in parallel with its companion bench slot — it is never blocked/waiting
+      // on the companion. Only a genuine slot penalty can be 'queued' when both
+      // penalty box slots are already occupied.
       const mainStatus: Penalty['status'] = (isSlot && slotsFull && settings.queueEnabled) ? 'queued'
-        : isBadge && companion ? 'waiting'
         : 'running';
       const mainQueue = mainStatus === 'queued'
         ? state.penalties.filter(p => p.team === team && p.status === 'queued').length + 1
@@ -1061,13 +1063,11 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
         if (cType === '2') {
           const slotId = makeSlot(companion.player, 120, true, mainId);
           const main = state.penalties.find(p => p.id === mainId)!;
-          main.linkedPenaltyId    = slotId;
-          main.blockedByPenaltyId = slotId;
+          main.linkedPenaltyId = slotId;
         } else if (cType === '5') {
           const slotId = makeSlot(companion.player, 300, false, mainId);
           const main = state.penalties.find(p => p.id === mainId)!;
-          main.linkedPenaltyId    = slotId;
-          main.blockedByPenaltyId = slotId;
+          main.linkedPenaltyId = slotId;
         } else if (cType === '2+2') {
           const slot1Id = makeSlot(companion.player, 120, true, mainId);
           const slot2Id = makeSlot(companion.player, 120, true, mainId);
@@ -1084,8 +1084,7 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
           const slot1 = state.penalties.find(p => p.id === slot1Id)!;
           slot1.nextPenaltyId = slot2Id;
           const main = state.penalties.find(p => p.id === mainId)!;
-          main.linkedPenaltyId    = slot1Id;
-          main.blockedByPenaltyId = slot1Id;
+          main.linkedPenaltyId = slot1Id;
         }
       }
       break;
@@ -1097,8 +1096,27 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
       const team      = pen.team;
       const removedId = pen.id;
       const toRemove  = new Set([msg.id]);
-      if (pen.linkedPenaltyId) toRemove.add(pen.linkedPenaltyId);
-      if (pen.parentPenaltyId) toRemove.add(pen.parentPenaltyId);
+
+      // Removing the MAIN penalty (e.g. a badge misconduct) cascades down to its
+      // companion chain (the linked bench slot, and — for 2+2 combos — the second
+      // chained slot). This direction is intentional: deleting/undoing the whole
+      // penalty entry should also remove the companion(s) that were created with it.
+      //
+      // The reverse must NOT happen: clearing a companion SLOT penalty (e.g. because
+      // the shorthanded team scored a power-play goal, or the operator removes it
+      // early) must never delete the main personal penalty it belongs to (parentPenaltyId).
+      // A badge main penalty runs independently from the moment it's added, regardless
+      // of what happens to its companion slot(s). unblockWaiting() below only starts the
+      // *second* slot of a 2+2 chain once the first slot is gone — it never touches the
+      // main penalty. Cascading up via parentPenaltyId used to delete the main penalty
+      // outright the moment its companion was cleared.
+      let linkedId: number | null = pen.linkedPenaltyId;
+      while (linkedId !== null) {
+        toRemove.add(linkedId);
+        const linked: Penalty | undefined = state.penalties.find(p => p.id === linkedId);
+        linkedId = linked?.nextPenaltyId ?? null;
+      }
+
       state.penalties = state.penalties.filter(p => !toRemove.has(p.id));
       state.penalties
         .filter(p => p.team === team && p.status === 'queued')
