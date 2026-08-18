@@ -17,6 +17,8 @@ No database. No Docker. Just `npm install && npm start`.
 - Crash recovery via local `state.json`
 - Multilingual UI (DE / FR / IT / EN)
 - Integrated manual with usage instructions (`/help`)
+- Dedicated stopwatch view (`/stopwatch`) — single-button game clock control
+  for tablet/phone, for when the Operator has their hands full with penalties
 - TV/projector display output (`/display.html`)
 - Horn/buzzer sound, configurable to play on the Operator device, the
   Display device, or both

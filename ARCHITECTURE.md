@@ -18,16 +18,44 @@ a fork. Both codebases are expected to diverge over time.
 - YAML files in `sports-templates/` are the **only** source for sport
   configurations (no database sync as in Matchuhr).
 
-## Components (only 3, deliberately reduced)
+## Components
 
 1. **GameStart** (`/`) — teams as free text + colour (no autocomplete, no
    team database), sport template via dropdown, sourced from YAML templates
 2. **Operator** (`/operator`) — live game control
-3. **Display** (`/display.html`) — TV/projector output, separate Vite entry
+3. **Stopwatch** (`/stopwatch`) — single-button clock control, see below
+4. **Display** (`/display.html`) — TV/projector output, separate Vite entry
    point, no vue-i18n, own locale handling via localStorage
 
 **Deliberately NOT included:** Dashboard, Manager, team/player management,
 planned matches, database-backed template management.
+
+### Stopwatch: a dedicated single-purpose clock-toggle view
+Field experience showed the Operator can get overloaded juggling penalties
+(and sometimes the horn/speaker role) at the same time as starting/stopping
+the game clock. `Stopwatch.vue` exists to let a second person on a
+tablet/phone/notebook own just that one job: a single large button that
+toggles `START`/`STOP`, colour-coded (green = running, red = stopped), with
+a live clock readout above it.
+
+Architecturally this is **not** a new client role or permission tier — the
+server has no concept of client types (see "PIN auth" below: any
+authenticated connection can send any command). Stopwatch.vue is simply
+another Vue route/page that opens its own `/socket` WebSocket connection,
+authenticates the same way as Operator, and only ever sends `START`/`STOP`.
+It reuses `GameState.running` directly for both the button colour and label,
+so it always reflects reality even if the actual toggle came from the
+Operator or vice versa — both are just clients on the same broadcast state.
+
+The toggle is disabled while `timeoutActive` is set, since during a timeout
+the server's own timeout countdown owns `running`/`lastTick` (see
+`server.ts` `TIMEOUT` handling) — a manual START/STOP there would fight the
+timeout logic rather than control the game clock.
+
+Before `phase !== 'pregame'` (i.e. no game configured/started yet), the page
+shows a simple "waiting for game to start" placeholder instead of the
+toggle — starting a game (`SET_CONFIG`) still only happens via the
+Operator/GameStart flow.
 
 ## Key technical decisions (as of chore/init)
 
