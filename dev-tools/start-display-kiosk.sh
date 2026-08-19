@@ -67,6 +67,11 @@ if ! command -v openvt &>/dev/null; then
   echo "Install it first: sudo apt install --no-install-recommends kbd" >&2
   exit 1
 fi
+if ! command -v xrandr &>/dev/null; then
+  echo "Error: xrandr not found." >&2
+  echo "Install it first: sudo apt install --no-install-recommends x11-xserver-utils" >&2
+  exit 1
+fi
 
 # Clean up any previous kiosk session first, so re-running this script
 # (e.g. after a code update) reliably gets a fresh window instead of
@@ -100,17 +105,51 @@ for policy_dir in /etc/chromium/policies/managed /etc/chromium-browser/policies/
 POLICY_EOF
 done
 
-setsid nohup openvt -f -- xinit "$CHROMIUM_BIN" \
-  --kiosk \
-  --no-sandbox \
-  --autoplay-policy=no-user-gesture-required \
-  --noerrdialogs \
-  --disable-infobars \
-  --disable-translate \
-  --disable-features=Translate,TranslateUI \
-  --disable-session-crashed-bubble \
-  --check-for-update-interval=31536000 \
-  "$URL" \
+# xinit's client argument runs immediately once X is up, with no built-in
+# step in between to fix the display resolution first. Wrap the actual
+# Chromium launch in a small generated script that forces the monitor's
+# native/preferred mode via xrandr before Chromium opens — without this,
+# Xorg sometimes falls back to a small default resolution (EDID not read
+# correctly on some HDMI setups), and --kiosk then correctly fills that
+# too-small virtual screen, leaving the rest of the physical display black.
+KIOSK_LAUNCHER="$(mktemp /tmp/openscoreboard-kiosk-launch.XXXXXX.sh)"
+cat > "$KIOSK_LAUNCHER" <<LAUNCHER_EOF
+#!/bin/sh
+# Force a specific HD mode rather than relying on "--auto", which on some
+# HDMI/EDID combos falls back to a small default resolution instead of the
+# monitor's real native mode — Chromium then correctly fills that
+# undersized virtual screen, looking like "half the screen".
+RES="1920x1080"
+OUTPUT="\$(xrandr | awk '/ connected/{print \$1; exit}')"
+if [ -n "\$OUTPUT" ]; then
+  if ! xrandr | grep -q "\$RES"; then
+    MODELINE="\$(cvt \${RES%x*} \${RES#*x} | awk '/Modeline/{\$1=""; print}')"
+    MODENAME="\$(echo "\$MODELINE" | awk '{print \$1}' | tr -d '"')"
+    xrandr --newmode "\$MODENAME" \$(echo "\$MODELINE" | cut -d'"' -f3-) 2>/dev/null || true
+    xrandr --addmode "\$OUTPUT" "\$MODENAME" 2>/dev/null || true
+    xrandr --output "\$OUTPUT" --mode "\$MODENAME" 2>/dev/null || xrandr --output "\$OUTPUT" --auto
+  else
+    xrandr --output "\$OUTPUT" --mode "\$RES"
+  fi
+fi
+exec "$CHROMIUM_BIN" \\
+  --kiosk \\
+  --no-sandbox \\
+  --window-size=1920,1080 \\
+  --window-position=0,0 \\
+  --start-fullscreen \\
+  --autoplay-policy=no-user-gesture-required \\
+  --noerrdialogs \\
+  --disable-infobars \\
+  --disable-translate \\
+  --disable-features=Translate,TranslateUI \\
+  --disable-session-crashed-bubble \\
+  --check-for-update-interval=31536000 \\
+  "$URL"
+LAUNCHER_EOF
+chmod +x "$KIOSK_LAUNCHER"
+
+setsid nohup openvt -f -- xinit "$KIOSK_LAUNCHER" \
   -- :0 -nocursor \
   > /tmp/openscoreboard-kiosk.log 2>&1 < /dev/null &
 disown
