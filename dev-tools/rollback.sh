@@ -9,7 +9,7 @@ set -euo pipefail
 #   bash rollback.sh <release-name>   → to a specific release in releases/
 #   bash rollback.sh --list           → show available releases
 #
-# Optional second argument: base dir (default ~/openscoreboard).
+# Optional second argument: base dir (default ~/openScoreboard).
 #
 # Data is NOT rolled back — settings, license, device secret and game state in
 # data/ stay as they are, so a venue's PIN, Fleet identity and a running game
@@ -17,13 +17,13 @@ set -euo pipefail
 # If the newer release changed a data file format that the older release can't
 # read, restore the matching pre-deploy snapshot manually:
 #   sudo systemctl stop openscoreboard
-#   tar -xzf ~/openscoreboard/backups/pre-<release>-<ts>.tgz -C ~/openscoreboard/data
+#   tar -xzf ~/openScoreboard/backups/pre-<release>-<ts>.tgz -C ~/openScoreboard/data
 #   sudo systemctl start openscoreboard
 #
 # Test hook: OSB_SYSTEMCTL="<cmd>" replaces `sudo systemctl`.
 
 ARG="${1:-}"
-BASE_DIR="${2:-$HOME/openscoreboard}"
+BASE_DIR="${2:-$HOME/openScoreboard}"
 SERVICE_NAME="openscoreboard"
 HEALTH_TIMEOUT=30
 STABLE_SECONDS=5

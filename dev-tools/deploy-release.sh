@@ -5,7 +5,7 @@ set -euo pipefail
 # Installs a release tarball produced by package-release.sh using an
 # immutable-release layout, so a bad release can be undone in seconds:
 #
-#   <base-dir>/                      default: ~/openscoreboard
+#   <base-dir>/                      default: ~/openScoreboard
 #     releases/<release-name>/       one folder per release, never modified
 #     current  -> releases/<name>    the active release (systemd runs this)
 #     previous -> releases/<name>    the release that was active before
@@ -40,9 +40,10 @@ set -euo pipefail
 # Test hooks (not for production use):
 #   OSB_SYSTEMCTL="<cmd>"  replaces `sudo systemctl`
 #   OSB_SKIP_UNIT=1        skips installing/updating the systemd unit
+#   OSB_UNIT_FILE=<path>   unit file location (default /etc/systemd/system/openscoreboard.service)
 
 RELEASE_TAR="${1:-}"
-BASE_DIR="${2:-$HOME/openscoreboard}"
+BASE_DIR="${2:-$HOME/openScoreboard}"
 SERVICE_NAME="openscoreboard"
 KEEP_RELEASES=3        # incl. current and previous
 KEEP_BACKUPS=10
@@ -54,6 +55,8 @@ if [[ -n "${OSB_SYSTEMCTL:-}" ]]; then
 else
   SYSTEMCTL=(sudo systemctl)
 fi
+
+UNIT_FILE="${OSB_UNIT_FILE:-/etc/systemd/system/${SERVICE_NAME}.service}"
 
 log()  { echo "[INFO] $*"; }
 warn() { echo "[WARN] $*" >&2; }
@@ -138,7 +141,7 @@ smoke_test() {
 
 install_unit() {
   [[ "${OSB_SKIP_UNIT:-0}" == "1" ]] && return 0
-  local template="$1" unit="/etc/systemd/system/${SERVICE_NAME}.service" rendered
+  local template="$1" unit="$UNIT_FILE" rendered
   [[ -f "$template" ]] || { warn "No service template in this release — unit not touched."; return 0; }
   rendered="$(sed -e "s#__BASE_DIR__#$BASE_DIR#g" -e "s#__USER__#$(whoami)#g" "$template")"
   if [[ ! -f "$unit" ]] || [[ "$(cat "$unit")" != "$rendered" ]]; then
@@ -169,8 +172,8 @@ migrate_legacy() {
     tar -czf "$BASE_DIR/backups/pre-migration-$LEGACY_TS.tgz" -C "$BASE_DIR" "${items[@]}"
     log "Backed up installation data to backups/pre-migration-$LEGACY_TS.tgz"
   fi
-  if [[ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]]; then
-    cp "/etc/systemd/system/${SERVICE_NAME}.service" "$BASE_DIR/backups/${SERVICE_NAME}.service.pre-migration-$LEGACY_TS"
+  if [[ -f "$UNIT_FILE" ]]; then
+    cp "$UNIT_FILE" "$BASE_DIR/backups/${SERVICE_NAME}.service.pre-migration-$LEGACY_TS"
   fi
 
   "${SYSTEMCTL[@]}" stop "$SERVICE_NAME" || true
@@ -193,7 +196,7 @@ restore_legacy() {
     [[ -e "$BASE_DIR/releases/legacy-$LEGACY_TS/$f" ]] && mv "$BASE_DIR/releases/legacy-$LEGACY_TS/$f" "$BASE_DIR/$f"
   done
   if [[ -f "$BASE_DIR/backups/${SERVICE_NAME}.service.pre-migration-$LEGACY_TS" && "${OSB_SKIP_UNIT:-0}" != "1" ]]; then
-    sudo cp "$BASE_DIR/backups/${SERVICE_NAME}.service.pre-migration-$LEGACY_TS" "/etc/systemd/system/${SERVICE_NAME}.service"
+    sudo cp "$BASE_DIR/backups/${SERVICE_NAME}.service.pre-migration-$LEGACY_TS" "$UNIT_FILE"
     "${SYSTEMCTL[@]}" daemon-reload
   fi
   mkdir -p "$BASE_DIR/failed"
@@ -231,12 +234,26 @@ elif [[ -f "$BASE_DIR/package.json" ]]; then
   grep -q '"name": "openscoreboard"' "$BASE_DIR/package.json" \
     || die "$BASE_DIR has a package.json, but it is not an openScoreboard install."
   MODE="legacy"
-elif [[ ! -d "$BASE_DIR" || -z "$(ls -A "$BASE_DIR" 2>/dev/null)" ]]; then
+elif [[ ! -d "$BASE_DIR" ]] || [[ -z "$(find "$BASE_DIR" -mindepth 1 -maxdepth 1 ! -name data -print -quit)" ]]; then
+  # Empty, nonexistent, or containing only a pre-created data/ folder. The latter is the
+  # way to give a brand-new instance its settings BEFORE the first deploy, e.g. a
+  # data/.env with PORT=3001 for a second instance next to another one on the same Pi
+  # (the health check reads PORT from data/.env).
   MODE="fresh"
 else
-  die "$BASE_DIR is non-empty but doesn't look like an openScoreboard install. Use an empty/nonexistent directory for first-time setup."
+  die "$BASE_DIR is non-empty but doesn't look like an openScoreboard install. Use an empty/nonexistent directory (optionally with a pre-created data/ folder) for first-time setup."
 fi
 log "Mode: $MODE (base dir: $BASE_DIR)"
+
+# Guard: an existing service unit must already belong to THIS base dir. Otherwise the
+# deploy would silently re-point a running installation (e.g. an older one under a
+# different directory name) to a fresh, empty one — new Fleet identity, default PIN.
+if [[ "${OSB_SKIP_UNIT:-0}" != "1" && -f "$UNIT_FILE" ]]; then
+  UNIT_WD="$(grep -E '^WorkingDirectory=' "$UNIT_FILE" | head -1 | cut -d= -f2- | sed 's#/*$##' || true)"
+  if [[ -n "$UNIT_WD" && "$UNIT_WD" != "$BASE_DIR" && "$UNIT_WD" != "$BASE_DIR"/* ]]; then
+    die "The existing service '$SERVICE_NAME' runs from $UNIT_WD, not from $BASE_DIR. Pass that directory as base dir (second argument of deploy-to-pi.sh), or remove the unit if it is obsolete."
+  fi
+fi
 
 mkdir -p "$BASE_DIR"
 STAGE_DIR="$(mktemp -d "$BASE_DIR/.incoming-XXXXXX")"

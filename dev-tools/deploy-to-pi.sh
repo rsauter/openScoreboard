@@ -12,7 +12,7 @@ set -euo pipefail
 # On the device the release is smoke-tested, switched in, health-checked and
 # automatically rolled back if it doesn't come up (see deploy-release.sh).
 # Manual rollback later:
-#   ssh <ssh-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/rollback.sh'
+#   ssh <ssh-user>@<pi-host> 'bash ~/openScoreboard/dev-tools/rollback.sh'
 #
 # Usage:
 #   ./dev-tools/deploy-to-pi.sh [--skip-build] <ssh-user>@<pi-host> [remote-base-dir]
@@ -25,7 +25,9 @@ set -euo pipefail
 #   ./dev-tools/deploy-to-pi.sh hornetsrmw-scoreboard@hrmw-scoreboard.local
 #   ./dev-tools/deploy-to-pi.sh --skip-build hornetsrmw-scoreboard@hrmw-scoreboard.local
 #
-# remote-base-dir (relative to the remote home) defaults to openscoreboard.
+# remote-base-dir (relative to the remote home) defaults to openScoreboard.
+# An installation under a different name (e.g. older hall Pis: openscoreboard) must be
+# passed explicitly: ./dev-tools/deploy-to-pi.sh <user>@<host> openscoreboard
 
 SKIP_BUILD=false
 if [[ "${1:-}" == "--skip-build" ]]; then
@@ -34,7 +36,7 @@ if [[ "${1:-}" == "--skip-build" ]]; then
 fi
 
 TARGET="${1:-}"
-REMOTE_DIR="${2:-openscoreboard}"
+REMOTE_DIR="${2:-openScoreboard}"
 
 if [[ -z "$TARGET" ]]; then
   echo "Usage: ./dev-tools/deploy-to-pi.sh [--skip-build] <ssh-user>@<pi-host> [remote-base-dir]" >&2
