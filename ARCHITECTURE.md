@@ -341,7 +341,7 @@ version is live" is a symlink, so deploy and rollback are the same cheap
 operation (re-point the link, restart).
 
 ```
-<base>/                          default ~/openscoreboard
+<base>/                          default ~/openScoreboard
   releases/<release-name>/       dist/, node_modules/, sports-templates/, RELEASE_INFO.txt, tooling
   current  -> releases/<name>    active release; systemd WorkingDirectory
   previous -> releases/<name>    default rollback target
@@ -406,12 +406,21 @@ writing it — remove it one release later), and the pre-deploy snapshot in
 `rollback.sh`).
 
 **Migrating existing flat installs.** A device where `dist/`, `settings.json`
-etc. sit directly in `~/openscoreboard` is detected on its first deploy:
+etc. sit directly in the base directory is detected on its first deploy:
 installation files are backed up and moved into `data/`, the old code is
 archived as `releases/legacy-<ts>`, and the unit is rewritten. The legacy code
 predates `DATA_DIR`, so it is **not** a `rollback.sh` target; instead, if the
 first release fails its health check, the deploy script restores the legacy
 install exactly as it was (files and unit) and reports the failure.
+
+**Existing installs under another directory name.** The default base
+directory is `~/openScoreboard`; the lab instance is `~/openScoreboard-lab`
+(`-lab` suffix = lab, everything else = prod). Devices that were set up under
+a different name (older hall Pis: `~/openscoreboard`) must pass it explicitly:
+`./dev-tools/deploy-to-pi.sh <user>@<host> openscoreboard`. The deploy script
+refuses to run if the existing `openscoreboard` unit's `WorkingDirectory`
+points outside the chosen base directory, so a wrong name can't silently
+re-point a running installation to an empty one.
 
 **Where `.env` lives.** In `data/` (`PORT`, `FLEET_*`, `OPERATOR_PIN`): it is
 per-installation, not per-release. `service_port` in the scripts reads `PORT`
@@ -448,7 +457,7 @@ should be done on the lab Pi.
     xinit chromium-browser`. Every release keeps the script itself current
     on the device (see "Release layout, deploy and rollback" above); trigger it
     remotely once the board should go live:
-    `ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/start-display-kiosk.sh'`
+    `ssh <pi-user>@<pi-host> 'bash ~/openScoreboard/dev-tools/start-display-kiosk.sh'`
   - **Linux with a desktop environment already running** (X or Wayland,
     e.g. a notebook, or a Pi deliberately set up with Desktop instead of
     Lite): the simpler direct command works, since a display to attach to

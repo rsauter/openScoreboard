@@ -154,7 +154,7 @@ The Pi never runs `git` or `npm`. A release is one self-contained tarball
 (built app + production `node_modules`), unpacked next to the previous ones:
 
 ```
-~/openscoreboard/
+~/openScoreboard/
   releases/<release-name>/   one folder per release, never modified
   current  -> releases/...   active release (what systemd runs)
   previous -> releases/...   release that was active before
@@ -179,9 +179,9 @@ previous release is restored automatically.
 Manual rollback (seconds, no network or build needed):
 
 ```bash
-ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/rollback.sh'            # back to previous
-ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/rollback.sh --list'     # what's available
-ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/rollback.sh <release>'  # a specific one
+ssh <pi-user>@<pi-host> 'bash ~/openScoreboard/dev-tools/rollback.sh'            # back to previous
+ssh <pi-user>@<pi-host> 'bash ~/openScoreboard/dev-tools/rollback.sh --list'     # what's available
+ssh <pi-user>@<pi-host> 'bash ~/openScoreboard/dev-tools/rollback.sh <release>'  # a specific one
 ```
 
 A rollback only switches the code; `data/` (PIN, license, Fleet identity,
