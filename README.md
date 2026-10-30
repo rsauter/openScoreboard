@@ -63,6 +63,7 @@ cp .env.example .env
 |----------|---------|---------|
 | `PORT` | HTTP port for the server | `3000` |
 | `OPERATOR_PIN` | Fixed operator PIN for the `/operator` view | `0000` if unset |
+| `DATA_DIR` | Folder for installation data (`settings.json`, `license.json`, `device-secret.json`, `state.json`, `state-archive/`, `.env` on a Pi). Set by the systemd unit on release-layout installs. | project root |
 
 > **Security note:** If `OPERATOR_PIN` is not set, the default PIN is `0000`.
 > Change it via the environment variable or in **Settings** before using the
@@ -138,7 +139,7 @@ jack into the venue's mixing desk), not by the app.
 
 ## Crash Recovery
 
-The server writes `state.json` every 5 seconds during an active game.  
+The server writes `state.json` (into `DATA_DIR`, by default the project root) every 5 seconds during an active game.  
 On restart, it attempts to restore the last unfinished game.  
 The file is deleted when a game ends or is reset.
 
@@ -146,6 +147,47 @@ The file is deleted when a game ends or is reset.
 > not yet been verified end-to-end under all real-world failure conditions
 > (e.g. power loss mid-write). Treat it as a safety net, not a guarantee —
 > feedback from real-world use is welcome.
+
+## Deploying to a Raspberry Pi (packaged releases, with rollback)
+
+The Pi never runs `git` or `npm`. A release is one self-contained tarball
+(built app + production `node_modules`), unpacked next to the previous ones:
+
+```
+~/openscoreboard/
+  releases/<release-name>/   one folder per release, never modified
+  current  -> releases/...   active release (what systemd runs)
+  previous -> releases/...   release that was active before
+  data/                      settings, license, device secret, game state, .env
+  backups/                   data snapshot taken before every deploy
+  dev-tools/                 deploy-release.sh, rollback.sh, start-display-kiosk.sh
+```
+
+Deploy from the dev machine (builds, packages, transfers, deploys):
+
+```bash
+./dev-tools/deploy-to-pi.sh <pi-user>@<pi-host>
+# or, reusing the newest tarball in releases/:
+./dev-tools/deploy-to-pi.sh --skip-build <pi-user>@<pi-host>
+```
+
+On the device, the new release is smoke-tested on a spare port **before**
+anything live is touched, then switched in and health-checked
+(`/api/health` must report the new release). If it doesn't come up, the
+previous release is restored automatically.
+
+Manual rollback (seconds, no network or build needed):
+
+```bash
+ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/rollback.sh'            # back to previous
+ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/rollback.sh --list'     # what's available
+ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/rollback.sh <release>'  # a specific one
+```
+
+A rollback only switches the code; `data/` (PIN, license, Fleet identity,
+running game) is left as it is. Existing flat installs are migrated to this
+layout automatically by their first deploy. Details and design rationale:
+[ARCHITECTURE.md](./ARCHITECTURE.md#release-layout-deploy-and-rollback).
 
 ## Port Configuration
 

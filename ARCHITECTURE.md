@@ -130,8 +130,27 @@ were not found in the build. Solution: a `PROJECT_ROOT` constant that
 detects whether `__dirname` ends in `.../dist` and, if so, goes up one
 level.
 
+### `DATA_DIR` for installation data, separate from `PROJECT_ROOT`
+`PROJECT_ROOT` is the *code* root (`package.json`, `sports-templates/`,
+`RELEASE_INFO.txt`). Everything that belongs to the *installation* —
+`settings.json`, `license.json`, `device-secret.json`, `state.json`,
+`state-archive/` (and the Fleet heartbeat's disk check) — lives in
+`DATA_DIR`, which defaults to `PROJECT_ROOT`. Dev, Railway and git-checkout
+instances therefore behave exactly as before. On a Pi with the release layout
+(see "Release layout, deploy and rollback") the systemd unit sets
+`DATA_DIR=<base>/data`, so switching releases can never move or lose venue data.
+`bootstrap.ts` additionally looks for `.env` in `DATA_DIR` first.
+
+**Why not symlink the individual files into each release?** `state.json` is
+archived via rename and removed with `unlink`; unlinking a symlink removes the
+link, not the target. A directory-level setting is the only safe option.
+
+`GET /api/health` additionally returns `release` (from `RELEASE_INFO.txt`,
+`dev` when absent). `package.json`'s `version` rarely changes, so it can't tell
+two builds apart; the deploy health check needs the release name.
+
 ### State recovery without a database
-`state.json` lives in the project root and is written every 5 seconds
+`state.json` lives in `DATA_DIR` (default: the project root) and is written every 5 seconds
 during an active game (not in the `pregame`/`ended` state); it is deleted
 when a game ends or is reset. On server start, an unfinished game is
 automatically restored. The file is listed in `.gitignore` (a pure runtime
@@ -296,8 +315,9 @@ dedicated scoreboard Pi.
   imaging via Raspberry Pi Imager's advanced options).
 - Autostart/crash recovery: a systemd service
   (`/etc/systemd/system/openscoreboard.service`) with `Restart=on-failure`
-  runs `node dist/bootstrap.js` from the project's `WorkingDirectory` — see
-  `dev-tools/openscoreboard.service.template`. **Not `node dist/server.js`
+  runs `node dist/bootstrap.js` with `WorkingDirectory=<base>/current` and
+  `DATA_DIR=<base>/data` — see `dev-tools/openscoreboard.service.template`
+  (`deploy-release.sh` re-renders and installs it whenever it changes). **Not `node dist/server.js`
   directly:** `bootstrap.ts` exists specifically to load `.env` before
   `server.ts`'s imports run (dynamic `import('./server')`, see the comment
   in `bootstrap.ts`); starting `server.js` directly silently skips that,
@@ -308,26 +328,107 @@ dedicated scoreboard Pi.
   automatically on crash, and keeps running independent of any SSH
   session. Confirmed working across a full power-cycle (`sudo reboot`)
   including correct `state.json` recovery of an in-progress game.
-- Deployment/update flow on the Pi: `git pull && npm install && npm run
-  build && sudo systemctl restart openscoreboard` — no reboot needed for a
-  plain code update. **Superseded by the packaged-release flow below** for
-  day-to-day deploys; this git-based flow remains useful for one-off manual
-  fixes directly on the device.
-- **Packaged-release deploy (preferred over `git pull` on the Pi):** the Pi
-  never runs `git` at all. `dev-tools/package-release.sh` (run on the dev
-  machine) builds the app and tars up exactly what production needs —
-  `dist/`, `package.json`, `package-lock.json`, `sports-templates/` — into
-  `releases/<name>.tar.gz`. Per-installation runtime/data files
-  (`settings.json`, `license.json`, `state.json`, `device-secret.json`,
-  `state-archive/`) are never part of the tarball in the first place, so
-  deploying can't clobber a venue's data — there's nothing to "exclude" at
-  deploy time, it's excluded by construction at packaging time.
-  `dev-tools/deploy-release.sh` lives permanently on the Pi and extracts a
-  transferred tarball directly on top of the existing install, then runs
-  `npm ci --omit=dev` and restarts the systemd service.
-  `dev-tools/deploy-to-pi.sh <user>@<host>` on the dev machine chains
-  package → `scp` → remote deploy into one command. See the scripts'
-  header comments for exact usage.
+- Deployment/update flow on the Pi: **packaged releases** (below). The
+  earlier `git pull && npm install && npm run build && sudo systemctl restart
+  openscoreboard` flow is only for one-off manual fixes on a dev/lab device
+  that still runs from a git checkout; don't mix it into a release-layout
+  install.
+
+#### Release layout, deploy and rollback
+
+The Pi never runs `git` or `npm`. A release is an immutable folder; "which
+version is live" is a symlink, so deploy and rollback are the same cheap
+operation (re-point the link, restart).
+
+```
+<base>/                          default ~/openscoreboard
+  releases/<release-name>/       dist/, node_modules/, sports-templates/, RELEASE_INFO.txt, tooling
+  current  -> releases/<name>    active release; systemd WorkingDirectory
+  previous -> releases/<name>    default rollback target
+  data/                          .env, settings.json, license.json, device-secret.json,
+                                 state.json, state-archive/   (DATA_DIR, shared by all releases)
+  backups/                       pre-<release>-<ts>.tgz, pre-rollback-<ts>.tgz, pre-migration-<ts>.tgz
+  failed/                        the last 2 releases that failed their health check, for analysis
+  dev-tools/                     deploy-release.sh, rollback.sh, start-display-kiosk.sh
+```
+
+**Packaging (`dev-tools/package-release.sh`, dev machine).** Builds and
+produces `releases/<name>.tar.gz` + `.sha256`, where `<name>` is
+`openscoreboard-<version>-<gitshort>-<timestamp>`. The tarball contains
+`dist/`, **production `node_modules`**, `package.json`, `package-lock.json`,
+`sports-templates/`, `RELEASE_INFO.txt` (with a `release:` line) and the
+device-side scripts. Per-installation files are never part of it, so a deploy
+can't clobber venue data — excluded by construction, not by a deploy-time
+exclude list.
+
+*Why `node_modules` is bundled:* `npm ci` on the device deletes
+`node_modules` first and then downloads; without (reliable) internet in the
+hall that leaves a half-installed app. The production dependency tree is
+`express`, `ws` and `yaml` (70 packages, pure JavaScript). The client
+libraries (`vue`, `pinia`, `vue-router`, `vue-i18n`, `marked`) are compiled
+into the Vite bundle and therefore live in `devDependencies`. The packaging
+script fails if a native addon (`*.node`) ever appears in the production tree,
+because it would have been built for the dev machine's CPU instead of the Pi's.
+`npm run build` no longer runs `npm install` itself; the packaging script runs
+`npm ci` for reproducible builds.
+
+**Deploy (`dev-tools/deploy-release.sh`, on the device; `deploy-to-pi.sh`
+chains package → `scp` → remote deploy).**
+1. Verify the checksum, unpack into a staging folder, validate the release
+   (required files, `RELEASE_INFO.txt` names the release, `node --check`).
+2. **Smoke test:** start the new release on a random spare port with an empty
+   temporary `DATA_DIR`; `/api/health` must report the new release name. A
+   release that doesn't even start is rejected here and *nothing live has been
+   touched* — no downtime.
+3. Snapshot `data/` to `backups/`, atomically re-point `current`
+   (`ln -sfn` + `mv -T`), install/update the systemd unit if it changed,
+   restart.
+4. **Health check:** `/api/health` must report the new release within 30 s,
+   still do so 5 s later, and the unit must be active. Otherwise `current` is
+   switched back to the previous release automatically and the deploy exits
+   non-zero; the failed release is moved to `failed/`.
+5. Keep the newest 3 releases (always including `current` and `previous`) and
+   the last 10 data snapshots; refresh the tooling in `dev-tools/`.
+
+**Rollback (`dev-tools/rollback.sh`).** `rollback.sh` → `previous`;
+`rollback.sh <name>` → a specific release; `--list` shows what exists. It takes
+a data snapshot, switches the link, restarts, health-checks, and switches
+back if the target doesn't come up. It needs no network and no build.
+
+**What a rollback does *not* undo: data.** `data/` is shared and is never
+rolled back, so PIN, license, Fleet identity and a running game survive. The
+flip side is that a newer release may have written a data file in a format the
+older one can't read. There is no `schemaVersion` in the JSON files yet (see
+open items), so the working rules are: data format changes are
+**additive only** (never rename/remove a field in the same release that stops
+writing it — remove it one release later), and the pre-deploy snapshot in
+`backups/` is the fallback (restore instructions are in the header of
+`rollback.sh`).
+
+**Migrating existing flat installs.** A device where `dist/`, `settings.json`
+etc. sit directly in `~/openscoreboard` is detected on its first deploy:
+installation files are backed up and moved into `data/`, the old code is
+archived as `releases/legacy-<ts>`, and the unit is rewritten. The legacy code
+predates `DATA_DIR`, so it is **not** a `rollback.sh` target; instead, if the
+first release fails its health check, the deploy script restores the legacy
+install exactly as it was (files and unit) and reports the failure.
+
+**Where `.env` lives.** In `data/` (`PORT`, `FLEET_*`, `OPERATOR_PIN`): it is
+per-installation, not per-release. `service_port` in the scripts reads `PORT`
+from there for the health check.
+
+**Lab vs. production instance.** A lab device that runs from a git checkout
+doesn't exercise this path. To test exactly what will ship, deploy the same
+tarball to the lab Pi first and treat it as the release gate before the hall
+devices.
+
+**Scripts were tested** against a simulated systemd (fresh install, update,
+rollback, a release that passes the smoke test but crashes in production →
+automatic rollback, corrupt tarball, a release that doesn't start, legacy
+migration, legacy migration with a failing first release, pruning). They have
+*not* yet been run against a real systemd unit on a Pi; the first real deploy
+should be done on the lab Pi.
+
 - **If the Display device is unattended (no touchscreen/mouse to tap the
   autoplay hint) and `hornOutput` includes it:** start Chrome/Chromium with
   `--autoplay-policy=no-user-gesture-required` so the horn plays
@@ -345,7 +446,7 @@ dedicated scoreboard Pi.
     command to over SSH. One-time OS prerequisite (a fresh Lite install has
     none of this): `sudo apt install --no-install-recommends xserver-xorg
     xinit chromium-browser`. Every release keeps the script itself current
-    on the device (see "Packaged-release deploy" below); trigger it
+    on the device (see "Release layout, deploy and rollback" above); trigger it
     remotely once the board should go live:
     `ssh <pi-user>@<pi-host> 'bash ~/openscoreboard/dev-tools/start-display-kiosk.sh'`
   - **Linux with a desktop environment already running** (X or Wayland,
@@ -384,6 +485,17 @@ dedicated scoreboard Pi.
   outage.
 
 ## Open items / next steps
+
+- **Release layout: not yet exercised on a real Pi.** The deploy/rollback
+  scripts were tested against a simulated systemd only. First real run: lab
+  Pi, with the same tarball later used for the hall devices.
+- **No `schemaVersion` in `settings.json` / `license.json` / `state.json`.**
+  Rollback across a data-format change relies on the "additive only" rule and
+  the pre-deploy snapshot. Adding a version field plus a tolerant reader would
+  make a rollback safe by construction.
+- **SD-card failure is not covered by release rollback.** A corrupted card
+  after a power cut is the more likely hall disaster than a bad release;
+  a per-device image backup or Fleet-driven re-provisioning would address it.
 
 - **Railway + Fleet pairing: ephemeral storage caveat (accepted for now).**
   `license.json` and `device-secret.json` are gitignored runtime files, same

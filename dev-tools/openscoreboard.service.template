@@ -4,11 +4,17 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=__PROJECT_DIR__
+# `current` is a symlink to the active release (see deploy-release.sh).
+# Switching or rolling back a release = re-pointing that symlink and restarting.
+WorkingDirectory=__BASE_DIR__/current
 ExecStart=/usr/bin/node dist/bootstrap.js
 Restart=on-failure
+RestartSec=3
 User=__USER__
 Environment=NODE_ENV=production
+# Installation data (settings, license, device secret, game state, .env) lives
+# outside the releases so it survives deploys and rollbacks.
+Environment=DATA_DIR=__BASE_DIR__/data
 
 [Install]
 WantedBy=multi-user.target

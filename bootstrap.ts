@@ -20,7 +20,10 @@ import path from 'path';
 // hence checking one directory up as well. On a platform deployment
 // (Railway, etc.) no .env file exists at all, hence the try/catch — that
 // case is expected and not an error condition.
+// On a Pi with the release layout, .env lives in the shared data directory
+// (DATA_DIR, set by the systemd unit) so it survives release switches.
 const envCandidates = [
+  ...(process.env.DATA_DIR ? [path.join(process.env.DATA_DIR, '.env')] : []),
   path.join(__dirname, '.env'),
   path.join(__dirname, '..', '.env'),
 ];

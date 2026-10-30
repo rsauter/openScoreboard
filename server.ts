@@ -12,12 +12,39 @@ import { defaultLicenseInfo } from './src/shared/types';
 
 // #region ─── Infrastructure ───────────────────────────────────────────────────
 
-// PROJECT_ROOT is still used for data files (state.json, templates).
+// PROJECT_ROOT is the code root (package.json, sports-templates/, RELEASE_INFO.txt).
 // In prod mode (dist) we go up one level to the project root.
 const PROJECT_ROOT = __dirname.endsWith(path.sep + 'dist') ? path.join(__dirname, '..') : __dirname;
 
+// DATA_DIR holds everything that belongs to the INSTALLATION rather than to a
+// release: settings.json, license.json, device-secret.json, state.json and
+// state-archive/. On a Pi with the release layout (releases/<name>/ + current
+// symlink + data/) it points at the shared data/ folder, so switching or rolling
+// back a release never touches venue data. It defaults to PROJECT_ROOT, which
+// keeps dev, Railway and the git-checkout lab instance behaving exactly as before.
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : PROJECT_ROOT;
+try {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+} catch (e: any) {
+  console.error(`[ERROR] Cannot create DATA_DIR ${DATA_DIR}:`, e.message);
+}
+
 // App version — single source of truth is package.json (no duplicate version string in code).
 const APP_VERSION: string = require(path.join(PROJECT_ROOT, 'package.json')).version;
+
+// Release identifier — read from RELEASE_INFO.txt, which package-release.sh writes
+// into every tarball. package.json's version alone cannot tell two builds apart
+// (it rarely changes), but the deploy health check must be able to verify that the
+// freshly started process really is the release it just switched to.
+// 'dev' when no RELEASE_INFO.txt exists (local dev, git-checkout instances).
+const APP_RELEASE: string = (() => {
+  try {
+    const info = fs.readFileSync(path.join(PROJECT_ROOT, 'RELEASE_INFO.txt'), 'utf-8');
+    return info.match(/^release:\s*(.+)$/m)?.[1].trim() ?? 'dev';
+  } catch {
+    return 'dev';
+  }
+})();
 
 const app = express();
 const server = http.createServer(app);
@@ -42,7 +69,7 @@ app.use(express.json());
 
 // #region ─── Auth ─────────────────────────────────────────────────────────────
 
-const SETTINGS_FILE = path.join(PROJECT_ROOT, 'settings.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const DEFAULT_PIN   = '0000';
 
 interface Settings {
@@ -152,7 +179,7 @@ process.nextTick(() => {
 
 // #region ─── License / Fleet Identity ─────────────────────────────────────────────────
  
-const LICENSE_FILE = path.join(PROJECT_ROOT, 'license.json');
+const LICENSE_FILE = path.join(DATA_DIR, 'license.json');
  
 function loadLicense(): LicenseInfo | null {
   try {
@@ -208,7 +235,7 @@ const licenseInfo = ensureLicenseFile();
 // Trust-on-first-use secret for all Fleet calls (heartbeat, pairing, license
 // pairing) — see ADR-0016 and src/server/deviceSecret.ts. Resolved once here
 // so every call site below uses the exact same value for this process's lifetime.
-const deviceSecret = getOrCreateDeviceSecret(PROJECT_ROOT);
+const deviceSecret = getOrCreateDeviceSecret(DATA_DIR);
  
 /** GET /api/license — read-only license info for the Settings UI. */
 app.get('/api/license', requireAuth, (_req, res) => {
@@ -452,8 +479,8 @@ function loadYamlTemplates(): void {
 
 // #region ─── Game State ───────────────────────────────────────────────────────
 
-const STATE_FILE   = path.join(PROJECT_ROOT, 'state.json');
-const ARCHIVE_DIR  = path.join(PROJECT_ROOT, 'state-archive');
+const STATE_FILE   = path.join(DATA_DIR, 'state.json');
+const ARCHIVE_DIR  = path.join(DATA_DIR, 'state-archive');
 
 function createInitialState(): GameState {
   return {
@@ -586,7 +613,7 @@ function unblockWaiting(expiredId: number): void {
 
 /** GET /api/health — simple reachability check (no DB in this open-source build). */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', defaultPin: isDefaultPin(), version: APP_VERSION });
+  res.json({ status: 'ok', defaultPin: isDefaultPin(), version: APP_VERSION, release: APP_RELEASE });
 });
 
 /** POST /api/auth/login — verifies PIN and returns a session token. */
@@ -1180,9 +1207,12 @@ async function handleCommand(msg: ClientCommand): Promise<void> {
 loadYamlTemplates();
 loadStateFromFile();
 startTick();
-initFleetHeartbeat(PROJECT_ROOT, APP_VERSION, licenseInfo.fleetInstanceId, deviceSecret);
+initFleetHeartbeat(DATA_DIR, APP_VERSION, licenseInfo.fleetInstanceId, deviceSecret);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-server.listen(PORT, () => console.log(`\n[INFO] Open Scoreboard running at http://localhost:${PORT}\n`));
+server.listen(PORT, () => {
+  console.log(`\n[INFO] Open Scoreboard running at http://localhost:${PORT}`);
+  console.log(`[INFO] Release: ${APP_RELEASE} | Data dir: ${DATA_DIR}\n`);
+});
 
 // #endregion
