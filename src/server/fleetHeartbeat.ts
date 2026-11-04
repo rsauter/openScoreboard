@@ -21,7 +21,8 @@ import fs from 'fs';
 // Railway/Pi deployments (renaming would require updating every environment).
 // Exported so server.ts can reuse the same base URL / secret for the device
 // pairing endpoints instead of re-reading process.env in two places.
-export const FLEET_ENDPOINT = process.env.FLEET_HEARTBEAT_URL; // e.g. https://scoreboardfleet.up.railway.app
+// Trailing slashes are stripped so both "https://host" and "https://host/" work. Empty value = disabled.
+export const FLEET_ENDPOINT = process.env.FLEET_HEARTBEAT_URL?.trim().replace(/\/+$/, '') || undefined; // e.g. https://compass.example.com
 export const FLEET_SECRET    = process.env.FLEET_SECRET;       // shared secret, must match scoreboardFLEET's value
 const FLEET_CHANNEL   = process.env.FLEET_CHANNEL ?? 'stable'; // 'stable' | 'canary'
 

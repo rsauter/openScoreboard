@@ -405,6 +405,12 @@ async function loadLicense(): Promise<void> {
   licenseError.value   = false;
   try {
     const res = await fetch('/api/license', { headers: authHeaders() });
+    if (res.status === 401) {
+      // Session token is gone (e.g. server restarted after an update) — go to login instead of showing a load error.
+      clearToken();
+      await router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } });
+      return;
+    }
     if (!res.ok) throw new Error('Request failed');
     license.value = await res.json() as LicenseInfo;
   } catch {
